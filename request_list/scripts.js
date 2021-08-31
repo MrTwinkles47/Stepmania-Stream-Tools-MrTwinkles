@@ -359,7 +359,7 @@ url = `get_updates.php?security_key=${security_key}&broadcaster=${broadcaster}&i
 				howmany = result["demands"].length;
 				console.log(howmany+" new demand(s)");
                                 $.each(result["demands"], function( key, value ) {
-                                	new_request(value);
+                                	new_demand(value);
 				});
 			}else{
 				console.log("No new requests");
