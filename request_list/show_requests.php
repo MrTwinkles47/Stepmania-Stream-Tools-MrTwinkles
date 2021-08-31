@@ -31,8 +31,6 @@ if(!empty($_GET["broadcaster"])){
 	$broadcaster = "%";
 }
 
-if(!isset($_GET["middle"])){
-
 echo '<html>
 <head>
 <link rel="stylesheet" href="style.css" />
@@ -43,18 +41,15 @@ echo '<html>
 <body>
 <audio id="new" src="new.mp3" type="audio/mpeg"></audio>
 <audio id="cancel" src="cancel.mp3" type="audio/mpeg"></audio>
-<div id="middle">
-
-';
-
-}
+<div id="top">
+<div id="middle">';
 
 	if(empty($requestWidgetLength) || !is_numeric($requestWidgetLength) || $requestWidgetLength > 50){
 		$requestWidgetLength = 10;
 	}
 
         //$sql = "SELECT * FROM sm_requests WHERE state=\"requested\" OR state=\"completed\" ORDER BY request_time DESC LIMIT 10";
-        $sql = "SELECT * FROM sm_requests WHERE ((state=\"requested\" OR state=\"completed\") AND broadcaster LIKE \"{$broadcaster}\") ORDER BY request_time DESC LIMIT $requestWidgetLength";
+        $sql = "SELECT * FROM sm_requests WHERE ((state=\"requested\" OR state=\"demanded\" OR state=\"completed\") AND broadcaster LIKE \"{$broadcaster}\") ORDER BY FIELD(state,'demanded'), request_time DESC LIMIT $requestWidgetLength";
         $retval = mysqli_query( $conn, $sql );
 		  $i=0;
 
