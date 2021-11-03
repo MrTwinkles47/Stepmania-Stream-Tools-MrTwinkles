@@ -92,41 +92,10 @@ function get_demands_since($id,$oldid,$broadcaster){
 	global $conn;
 	$sql = "SELECT * FROM sm_requests WHERE id >= $oldid AND state = \"demanded\" AND broadcaster LIKE \"{$broadcaster}\" ORDER by id ASC";
 	$retval = mysqli_query( $conn, $sql ) or die(mysqli_error($conn));
-	$requests = Array();
-	   while($row = mysqli_fetch_assoc($retval)) {
-			
-	$request_id = $row["id"];
-	$requestor = $row["requestor"];
-	$song_id = $row["song_id"];
-	$request_time = $row["request_time"];
-	$request_type = $row["request_type"];
-	$stepstype = $row["stepstype"];
-	$difficulty = $row["difficulty"];
-	
-		$sql2 = "SELECT * FROM sm_songs WHERE id = \"$song_id\"";
-		$retval2 = mysqli_query( $conn, $sql2 ) or die(mysqli_error($conn2));
-			   while($row2 = mysqli_fetch_assoc($retval2)) {
-				$demand["id"] = $request_id;
-				$demand["song_id"] = $song_id;
-				$demand["requestor"] = $requestor;
-				$demand["request_time"] = $request_time;
-				$demand["request_type"] = $request_type;
-				$demand["stepstype"] = $stepstype;
-				$demand["difficulty"] = $difficulty;
-				$demand["title"] = $row2["title"];
-				$demand["subtitle"] = $row2["subtitle"];
-				$demand["artist"] = $row2["artist"];
-				$demand["pack"] = format_pack($row2["pack"]);
-				$pack_img = strtolower(preg_replace('/\s+/', '_', trim($row2["pack"])));
-				$pack_img = glob("images/packs/".$pack_img.".{jpg,jpeg,png,gif}", GLOB_BRACE);
-				if (!$pack_img){
-					$demand["img"] = "images/packs/unknown.png";
-				}else{
-					$demand["img"] = "images/packs/".urlencode(basename($pack_img[0]));
-				}
-			}
-
-			array_push($demands, $demand);
+	$demands = Array();
+	while($row = mysqli_fetch_assoc($retval)) {
+		$request_id = $row["id"];
+		array_push($demands, $request_id);
 	}
 
 	return $demands;
