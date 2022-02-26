@@ -10,6 +10,7 @@ $cacheDir = "C:/Users/[USER]/AppData/Roaming/StepMania 5.1/Cache/Songs";
 //SM5: "[AppData]/Roaming/StepMania 5/Save"
 //SM5.1: "[AppData]/Roaming/StepMania 5.1/Save"
 //SM5.3 (OutFox) or portable installations: "[SM5]/Save"
+//If using USB Profile, please configure the $profileDir to point at your drive/share location for the USB Drive
 $saveDir = "C:/Users/[USER]/AppData/Roaming/StepMania 5.1/Save";
 $profileDir = $saveDir."/LocalProfiles";
 
@@ -37,5 +38,9 @@ $security_key = "any-secret-here";
 //Set this to TRUE if you are running the request system on a separate machine that has no realtime access to the StepMania files
 //For a description of this operation mode, review the main README.
 $offlineMode = FALSE;
+
+//USB Profile Mode
+//Set this to True if you are using a USB profile as your profile location 
+$USBProfile = FALSE;
 
 ?>
