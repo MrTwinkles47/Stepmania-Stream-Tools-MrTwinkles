@@ -43,4 +43,7 @@ $offlineMode = FALSE;
 //Set this to True if you are using a USB profile as your profile location 
 $USBProfile = FALSE;
 
+//This should match the value in your Preferences.ini file if you are using USBProfiles
+$MemoryCardProfileSubdir = "StepMania 5.3";
+
 ?>

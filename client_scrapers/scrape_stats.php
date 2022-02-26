@@ -49,6 +49,8 @@ if (php_sapi_name() == "cli") {
 				$profileIDs[] = $arg;
 			}elseif ($arg == "-auto"){
 				$autoRun = FALSE;
+			}elseif ($arg = $MemoryCardProfileSubdir){
+				$profileIDs[] = $arg;
 			}
 		}
 		if($USBProfile){
