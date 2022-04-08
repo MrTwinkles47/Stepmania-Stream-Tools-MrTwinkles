@@ -163,7 +163,7 @@ function parseMetadata($file) {
 	//keep only data before the #NOTEDATA section
 	$data = substr($data,0,strpos($data,"//-------"));
 	
-	$file_arr = preg_split("/{$eol}/",$data);
+	$file_arr = explode($eol,$data);
 	
 	foreach ($file_arr as $line){
 		// if there is no $delimiter, set an empty string
@@ -224,7 +224,7 @@ function parseNotedata($file) {
 				
 				$data_sub = substr($data,$notedata_offset,$notedata_next-$notedata_offset);
 				$file_arr = "";
-				$file_arr = preg_split("/{$eol}/",$data_sub);
+				$file_arr = explode($eol,$data_sub);
 				
 				foreach ($file_arr as $line){
 					$line = trim($line);
@@ -261,7 +261,7 @@ function parseNotedata($file) {
 					if( strpos($lines['#DISPLAYBPM'],':') > 0){
 						//deal with split bpm values
 						$display_bpmSplit = array();
-						$display_bpmSplit = preg_split("/:/",$lines['#DISPLAYBPM']);
+						$display_bpmSplit = explode($delimiter,$lines['#DISPLAYBPM']);
 						$lines['#DISPLAYBPM'] = intval($display_bpmSplit[0],0)."-".intval($display_bpmSplit[1],0);
 					}else{
 						$lines['#DISPLAYBPM'] = intval($lines['#DISPLAYBPM'],0);
