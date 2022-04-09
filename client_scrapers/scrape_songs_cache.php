@@ -256,20 +256,16 @@ function parseNotedata($file) {
 				array_key_exists('#CHARTSTYLE',$lines)  	? $lines['#CHARTSTYLE']	 	: $lines['#CHARTSTYLE']  	= "";
 				array_key_exists('#CREDIT',$lines)      	? $lines['#CREDIT']    	 	: $lines['#CREDIT']      	= "";
 				array_key_exists('#CHARTHASH',$lines)      	? $lines['#CHARTHASH']    	: $lines['#CHARTHASH']      = "";
+				array_key_exists('#DISPLAYBPM',$lines)      ? $lines['#DISPLAYBPM']    	: $lines['#DISPLAYBPM']      = "";
 				
-				if( array_key_exists('#DISPLAYBPM',$lines)){
-					if( strpos($lines['#DISPLAYBPM'],':') > 0){
-						//deal with split bpm values
-						$display_bpmSplit = array();
-						$display_bpmSplit = explode($delimiter,$lines['#DISPLAYBPM']);
-						$lines['#DISPLAYBPM'] = intval($display_bpmSplit[0],0)."-".intval($display_bpmSplit[1],0);
-					}else{
-						$lines['#DISPLAYBPM'] = intval($lines['#DISPLAYBPM'],0);
-					}
+				if( strpos($lines['#DISPLAYBPM'],':') > 0){
+					//deal with split bpm values
+					$display_bpmSplit = explode($delimiter,$lines['#DISPLAYBPM']);
+					$lines['#DISPLAYBPM'] = round(min($display_bpmSplit),0) . "-" . round(max($display_bpmSplit),0);
 				}else{
-						$lines['#DISPLAYBPM']  = "";
+					$lines['#DISPLAYBPM'] = round($lines['#DISPLAYBPM'],0);
 				}
-				
+								
 				$notedata_array[] = array('chartname' => $lines['#CHARTNAME'], 'stepstype' => $lines['#STEPSTYPE'], 'description' => $lines['#DESCRIPTION'], 'chartstyle' => $lines['#CHARTSTYLE'], 'charthash' => $lines['#CHARTHASH'], 'difficulty' => $lines['#DIFFICULTY'], 'meter' => $lines['#METER'], 'radarvalues' => $lines['#RADARVALUES'], 'credit' => $lines['#CREDIT'], 'displaybpm' => $lines['#DISPLAYBPM'], 'stepfilename' => $lines['#STEPFILENAME']);
 
 				$notedata_count++;
