@@ -280,10 +280,10 @@ function scrapeSong($songCache_array){
 				//bpm is a range
 				$display_bpmSplit = explode(":",$display_bpm);
 				//round and format bpm range
-				$display_bpm = round(min($display_bpmSplit),0) . "-" . round(max($display_bpmSplit),0);
+				$display_bpm = intval(round(min($display_bpmSplit),0)) . "-" . intval(round(max($display_bpmSplit),0));
 			}else{
 				$display_bpm = trim($display_bpm);
-				$display_bpm = round($display_bpm,0);
+				$display_bpm = intval(round($display_bpm,0));
 			}
 
 		}elseif( isset($metadata['#BPMS']) && !empty($metadata['#BPMS'])){
@@ -291,9 +291,9 @@ function scrapeSong($songCache_array){
 			$display_bpm = explode(",",$metadata['#BPMS']);
 			$display_bpm = array_map(function($n){return substr($n,strpos($n,"=")+1);},$display_bpm);
 			if(count($display_bpm) > 1){
-				$display_bpm = round(min($display_bpm),0) . "-" . round(max($display_bpm),0);
+				$display_bpm = intval(round(min($display_bpm),0)) . "-" . intval(round(max($display_bpm),0));
 			}else{
-				$display_bpm = $display_bpm[0];
+				$display_bpm = intval(round($display_bpm[0],0));
 			}
 		}
 

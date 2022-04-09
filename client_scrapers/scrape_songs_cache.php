@@ -261,9 +261,9 @@ function parseNotedata($file) {
 				if( strpos($lines['#DISPLAYBPM'],':') > 0){
 					//deal with split bpm values
 					$display_bpmSplit = explode($delimiter,$lines['#DISPLAYBPM']);
-					$lines['#DISPLAYBPM'] = round(min($display_bpmSplit),0) . "-" . round(max($display_bpmSplit),0);
+					$lines['#DISPLAYBPM'] = intval(round(min($display_bpmSplit),0)) . "-" . intval(round(max($display_bpmSplit),0));
 				}else{
-					$lines['#DISPLAYBPM'] = round($lines['#DISPLAYBPM'],0);
+					$lines['#DISPLAYBPM'] = intval(round($lines['#DISPLAYBPM'],0));
 				}
 								
 				$notedata_array[] = array('chartname' => $lines['#CHARTNAME'], 'stepstype' => $lines['#STEPSTYPE'], 'description' => $lines['#DESCRIPTION'], 'chartstyle' => $lines['#CHARTSTYLE'], 'charthash' => $lines['#CHARTHASH'], 'difficulty' => $lines['#DIFFICULTY'], 'meter' => $lines['#METER'], 'radarvalues' => $lines['#RADARVALUES'], 'credit' => $lines['#CREDIT'], 'displaybpm' => $lines['#DISPLAYBPM'], 'stepfilename' => $lines['#STEPFILENAME']);
