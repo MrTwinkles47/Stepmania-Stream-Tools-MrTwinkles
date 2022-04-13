@@ -413,7 +413,7 @@ function addLastPlayedtoDB ($lastplayed_array){
 		$assignmentSQL = "";
 		$songInfo = array();
 		//check if this entry exists already
-		$sql0 = "SELECT * FROM sm_songsplayed WHERE song_dir = \"{$lastplayed['SongDir']}\" AND numplayed = \"{$lastplayed['NumTimesPlayed']}\" AND lastplayed >= \"{$lastplayed['LastPlayed']}\" AND difficulty = \"{$lastplayed['Difficulty']}\" AND stepstype = \"{$lastplayed['StepsType']}\" AND username = \"{$lastplayed['DisplayName']}\"";
+		$sql0 = "SELECT * FROM sm_songsplayed WHERE song_dir = \"{$lastplayed['SongDir']}\" AND numplayed = \"{$lastplayed['NumTimesPlayed']}\" AND lastplayed >= \"{$lastplayed['LastPlayed']}\" AND difficulty = \"{$lastplayed['Difficulty']}\" AND stepstype = \"{$lastplayed['StepsType']}\" AND username = \"{$lastplayed['DisplayName']}\" AND charthash LIKE '{$lastplayed['ChartHash']}'";
 		if (!$retval = mysqli_query($conn, $sql0)){
 			echo "Error: " . $sql0 . PHP_EOL . mysqli_error($conn) . PHP_EOL;
 		}
@@ -469,8 +469,10 @@ function addLastPlayedtoDB ($lastplayed_array){
 
 				//get list of all ids
 				$duplicateIDs = array();
+				$chartHashes = array();
 				while($row = mysqli_fetch_assoc($retval)){
 					$duplicateIDs[] = $row['id'];
+					$chartHashes[] = $row['charthash'];
 				}	
 				//sort the array, remove the smallest id, and convert to a comma separated string
 				asort($duplicateIDs,SORT_NUMERIC);
