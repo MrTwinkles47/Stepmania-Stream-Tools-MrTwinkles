@@ -412,8 +412,12 @@ function addLastPlayedtoDB ($lastplayed_array){
 		$assignmentArray = array();
 		$assignmentSQL = "";
 		$songInfo = array();
+		//format chart hash. we will assume a value of 0, null, or '' = "no hash"
+		if(empty($lastplayed['ChartHash']) || $lastplayed['ChartHash'] == 0){
+			$lastplayed['ChartHash'] = "";
+		}
 		//check if this entry exists already
-		$sql0 = "SELECT * FROM sm_songsplayed WHERE song_dir = \"{$lastplayed['SongDir']}\" AND numplayed = \"{$lastplayed['NumTimesPlayed']}\" AND lastplayed >= \"{$lastplayed['LastPlayed']}\" AND difficulty = \"{$lastplayed['Difficulty']}\" AND stepstype = \"{$lastplayed['StepsType']}\" AND username = \"{$lastplayed['DisplayName']}\" AND charthash LIKE '{$lastplayed['ChartHash']}'";
+		$sql0 = "SELECT * FROM sm_songsplayed WHERE song_dir = \"{$lastplayed['SongDir']}\" AND numplayed = \"{$lastplayed['NumTimesPlayed']}\" AND lastplayed >= \"{$lastplayed['LastPlayed']}\" AND difficulty = \"{$lastplayed['Difficulty']}\" AND stepstype = \"{$lastplayed['StepsType']}\" AND username = \"{$lastplayed['DisplayName']}\" AND charthash = '{$lastplayed['ChartHash']}'";
 		if (!$retval = mysqli_query($conn, $sql0)){
 			echo "Error: " . $sql0 . PHP_EOL . mysqli_error($conn) . PHP_EOL;
 		}
@@ -421,7 +425,7 @@ function addLastPlayedtoDB ($lastplayed_array){
 			//existing record is not found - let's either update or insert a record
 			$songInfo = lookupSongID($lastplayed['SongDir']);
 			//check if the number of times played has increased and update db
-			$sql0 = "SELECT * FROM sm_songsplayed WHERE song_dir = \"{$lastplayed['SongDir']}\" AND difficulty = \"{$lastplayed['Difficulty']}\" AND stepstype = \"{$lastplayed['StepsType']}\" AND username = \"{$lastplayed['DisplayName']}\" ORDER BY lastplayed DESC";
+			$sql0 = "SELECT * FROM sm_songsplayed WHERE song_dir = \"{$lastplayed['SongDir']}\" AND difficulty = \"{$lastplayed['Difficulty']}\" AND stepstype = \"{$lastplayed['StepsType']}\" AND username = \"{$lastplayed['DisplayName']}\" AND charthash = '{$lastplayed['ChartHash']}' ORDER BY lastplayed DESC";
 			if (!$retval = mysqli_query($conn, $sql0)){
 				echo "Error: " . $sql0 . PHP_EOL . mysqli_error($conn) . PHP_EOL;
 			}
@@ -472,7 +476,8 @@ function addLastPlayedtoDB ($lastplayed_array){
 				$chartHashes = array();
 				while($row = mysqli_fetch_assoc($retval)){
 					$duplicateIDs[] = $row['id'];
-					$chartHashes[] = $row['charthash'];
+					$chartHashes[]['hash'] = $row['charthash'];
+					$chartHashes[]['id'] = $row['id'];
 				}	
 				//sort the array, remove the smallest id, and convert to a comma separated string
 				asort($duplicateIDs,SORT_NUMERIC);
