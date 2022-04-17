@@ -425,7 +425,7 @@ function addLastPlayedtoDB ($lastplayed_array){
 			//existing record is not found - let's either update or insert a record
 			$songInfo = lookupSongID($lastplayed['SongDir']);
 			//check if the number of times played has increased and update db
-			$sql0 = "SELECT * FROM sm_songsplayed WHERE song_dir = \"{$lastplayed['SongDir']}\" AND difficulty = \"{$lastplayed['Difficulty']}\" AND stepstype = \"{$lastplayed['StepsType']}\" AND username = \"{$lastplayed['DisplayName']}\" AND charthash = '{$lastplayed['ChartHash']}' ORDER BY lastplayed DESC";
+			$sql0 = "SELECT * FROM sm_songsplayed WHERE song_dir = \"{$lastplayed['SongDir']}\" AND difficulty = \"{$lastplayed['Difficulty']}\" AND stepstype = \"{$lastplayed['StepsType']}\" AND username = \"{$lastplayed['DisplayName']}\" AND charthash = \"{$lastplayed['ChartHash']}\" ORDER BY lastplayed DESC";
 			if (!$retval = mysqli_query($conn, $sql0)){
 				echo "Error: " . $sql0 . PHP_EOL . mysqli_error($conn) . PHP_EOL;
 			}
@@ -469,15 +469,12 @@ function addLastPlayedtoDB ($lastplayed_array){
 			}elseif(mysqli_num_rows($retval) > 1){
 				//there are duplicate entries for this song.
 				//This is not an expected result, so let's fix it. (Hopefully, this only has to be fixed once!)
-				//echo "Debug: Duplicate DB records. Query: $sql0" . PHP_EOL;
+				echo "Debug: Duplicate DB records. Query: $sql0" . PHP_EOL;
 
 				//get list of all ids
 				$duplicateIDs = array();
-				$chartHashes = array();
 				while($row = mysqli_fetch_assoc($retval)){
 					$duplicateIDs[] = $row['id'];
-					$chartHashes[]['hash'] = $row['charthash'];
-					$chartHashes[]['id'] = $row['id'];
 				}	
 				//sort the array, remove the smallest id, and convert to a comma separated string
 				asort($duplicateIDs,SORT_NUMERIC);
@@ -485,7 +482,7 @@ function addLastPlayedtoDB ($lastplayed_array){
 				$duplicateIDs = implode(',',$duplicateIDs);
 
 				//delete all records, not the first
-				//echo "Deleting record IDs: $duplicateIDs" . PHP_EOL;
+				echo "Deleting record IDs: $duplicateIDs" . PHP_EOL;
 				$sql0 = "DELETE FROM sm_songsplayed WHERE id IN($duplicateIDs)";
 				if (!mysqli_query($conn, $sql0)){
 					echo "Error: " . $sql0 . PHP_EOL . mysqli_error($conn) . PHP_EOL;
@@ -612,7 +609,7 @@ function addHighScoretoDB ($highscore_array){
 		$songInfo = array();
 		//look for existing record and skip if found
 		$sql1 = "SELECT * FROM sm_scores 
-		WHERE song_dir=\"{$highscore['SongDir']}\" AND stepstype=\"{$highscore['StepsType']}\" AND difficulty=\"{$highscore['Difficulty']}\" AND score=\"{$highscore['HighScore']['Score']}\" AND datetime=\"{$highscore['HighScore']['DateTime']}\" AND username =\"{$highscore['DisplayName']}\"";
+		WHERE song_dir=\"{$highscore['SongDir']}\" AND stepstype=\"{$highscore['StepsType']}\" AND difficulty=\"{$highscore['Difficulty']}\" AND score=\"{$highscore['HighScore']['Score']}\" AND datetime=\"{$highscore['HighScore']['DateTime']}\" AND username =\"{$highscore['DisplayName']}\" AND charthash = \"{$highscore['ChartHash']}\"";
 		$retval = mysqli_query($conn, $sql1);
 			
 		if (mysqli_num_rows($retval) == 0){
