@@ -266,53 +266,72 @@ function find_duplicate_chart_hash (array $existingRecords, string $song_dir, st
 	//let's find out if there is already a record for this song_dir/steps/chart/hash combination in the array
 	//this problem started with OF 4.14; previous SM5 versions will not have duplicate entries
 	//multiple chart hashes are accepted, but no combination of '0' hash and other hash values
-	//this function returns FALSE for no duplicate or the array key value of the duplicate 
+	//this function returns FALSE for no duplicate or the array key(s) value of the duplicate 
+	$return = FALSE;
+
 	if (empty($existingRecords)){
 		//empty array, nothing to check!
-		return FALSE;
+		$return = FALSE;
 	}
+
+	//print_r($existingRecords) . PHP_EOL;
 	//find array keys for SongDir
-	$foundKeys = array_keys(array_column($existingRecords,'SongDir',),$song_dir);
+	$foundKeys = array();
+	$foundKeys = array_keys(array_column($existingRecords,'SongDir'),$song_dir);
 	
-	if (count($foundKeys) > 0){
+	if (!empty($foundKeys) && count($foundKeys) > 0){
 		//song_dir is found
+		$chartHashes = array();
 		foreach($foundKeys as $key){
-			$chartHashes = array();
 			if ($existingRecords[$key]['StepsType'] == $steps_type && $existingRecords[$key]['Difficulty'] == $difficulty){
 				//stepstype and difficulty match, record the key, hash, and date
-				$chartHashes[] = array('key' => $key, 'ChartHash' => $existingRecords[$key]['ChartHash'], 'LastPlayed' => $existingRecords[$key]['LastPlayed']);
+				$chartHashes[] = array('key' => $key, 'ChartHash' => $existingRecords[$key]['ChartHash'], 'LastPlayed' => $existingRecords[$key]['LastPlayed'], 'NumTimesPlayed' => $existingRecords[$key]['NumTimesPlayed']);
 			}
 		}
-		if (count($chartHashes) === 1 ){
+
+		if (count($chartHashes) == 1 ){
 			//only 1 record found
-			return FALSE;
-		}elseif (count($chartHashes) > 1 && in_array('0',array_column($chartHashes,'ChartHash'))){
-			//duplicate existing chart(s) found with 1 entry having a hash = 0
+			$return = FALSE;
+		}elseif (count($chartHashes) > 1 && in_array("0",array_column($chartHashes,'ChartHash'))){
+			//duplicate existing chart(s) found with 1 entry having a hash = 0 or ""
 			//let's check if the other chart hash has a value and has a higher timestamp
 
 			//sort the array by the hash value ASC, we can assume now that index 0 is hash 0
 			array_multisort(array_column($chartHashes, 'ChartHash'), SORT_ASC, $chartHashes);
 
-			echo("DEBUG: Duplicate records found. Sorted array: ");
-			print_r($chartHashes) . PHP_EOL;
+			echo("DEBUG: Duplicate records found. Sorted array: ") . PHP_EOL;
+			wh_log("DEBUG: Duplicate records found. Sorted array: ");
+			wh_log(print_r($chartHashes));
 
 			//compare last played dates of the hashes
 			$lastPlayedMax = max(array_column($chartHashes, 'LastPlayed'));
-			if ($lastPlayedMax > $chartHashes[0]['LastPlayed']){
+			if ($lastPlayedMax >= $chartHashes[0]['LastPlayed']){
 				//other hashes have a greater date, let's assume the hash 0 record is a duplicate that can be superceded by the other records
-				echo("DEBUG: Returning key $chartHashes[0]['key']: ");
-				print_r($chartHashes[0]) . PHP_EOL;
-				return $chartHashes[0]['key'];
+				echo("DEBUG: Returning key {$chartHashes[0]['key']}: ") . PHP_EOL;
+				wh_log("DEBUG: Returning key {$chartHashes[0]['key']}: ");
+				$return = array($chartHashes[0]['key']);
 			}
+		}elseif (count($chartHashes) > 1){
+			//multiple hashes found that are not containing 0
+			//let's get only the most current if the records seem to be dupes
+			echo("DEBUG: dupe chart hashes > 0: ") . PHP_EOL;
+			$dupKeys = array();
+			foreach ($chartHashes as $chart){
+				if ($chart['ChartHash'] != 0 && strlen($chart['ChartHash']) < 4){
+					$dupKeys[] = $chart['key'];
+					echo("DEBUG: Returning small key {$chart['key']}: ") . PHP_EOL;
+					wh_log("DEBUG: Returning small key {$chart['key']}: ");
+				}
+			}
+			$return = $dupKeys;			
 		}else{
-			//something went wrong
+			echo ("Count expectation?") . PHP_EOL;
+			//something I didn't expect to happen?
 		}
-
 	}else{
 		//song_dir not found or there was an error
 	}
-
-	return FALSE;
+	return $return;
 }
 
 function statsXMLtoArray (array $file){
@@ -329,7 +348,7 @@ function statsXMLtoArray (array $file){
 
 	//OutFox "steps hash" implementation was changed 3+ times so far, it can be either:
 	$outFoxHash = array('StepsHash','ChartHash','Hash','OnlineHash');
-	$outFoxDesc = array('Description','OnlineDescription');
+	$outFoxDesc = array('StepsDescription','Description','OnlineDescription');
 	
 	//open xml file
 	libxml_clear_errors();
@@ -388,14 +407,14 @@ function statsXMLtoArray (array $file){
 		foreach ($song->Steps as $steps){		
 			$steps_type = (string)$steps['StepsType']; //dance-single, dance-double, etc.
 			$difficulty = (string)$steps['Difficulty']; //Beginner, Medium, Expert, etc.
-			//$chartHash = (string)$steps['Hash']; //OutFox chart hash
-			$chartHash = "";
-			foreach ($outFoxHash as $hash){
-				if(!empty($steps[$hash])){
-					$chartHash = (string)$steps[$hash];
-					break;
-				}
-			}
+			$chartHash = (string)$steps['OnlineHash']; //OutFox chart hash
+			// $chartHash = "";
+			// foreach ($outFoxHash as $hash){
+			// 	if(!empty($steps[$hash])){
+			// 		$chartHash = (string)$steps[$hash];
+			// 		break;
+			// 	}
+			// }
 			//$stepsDescription = (string)$steps['Description']; //OutFox steps description
 			$stepsDescription = "";
 			foreach ($outFoxDesc as $desc){
@@ -436,9 +455,9 @@ function statsXMLtoArray (array $file){
 							$dupKey = find_duplicate_chart_hash($statsHighScores,$song_dir,$steps_type,$difficulty);
 							if ($dupKey){
 								//key is not FALSE
-								echo("DEBUG: unset dupliate key: ");
-								print_r($statsHighScores[$dupKey]);
-								unset($statsHighScores[$dupKey]);
+								foreach ($dupKey as $key){
+									unset($statsHighScores[$key]);
+								}
 							}
 						}
 					}
@@ -453,9 +472,9 @@ function statsXMLtoArray (array $file){
 					$dupKey = find_duplicate_chart_hash($statsLastPlayed,$song_dir,$steps_type,$difficulty);
 					if ($dupKey){
 						//key is not FALSE
-						echo("DEBUG: unset dupliate key: ");
-						print_r($statsLastPlayed[$dupKey]);
-						unset($statsLastPlayed[$dupKey]);
+						foreach ($dupKey as $key){
+							unset($statsLastPlayed[$key]);
+						}
 					}
 				}
 			}
