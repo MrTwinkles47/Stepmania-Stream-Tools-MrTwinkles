@@ -21,7 +21,7 @@ function check_banned($song_id, $user){
 	$sql0 = "SELECT * FROM sm_songs WHERE installed=1 AND id = '{$song_id}' LIMIT 1";
 	if( mysqli_fetch_assoc( mysqli_query( $conn,$sql0))['banned'] == 1)
 		{
-		die("I'm sorry $user, but I'm afraid I can't do that.");
+		die("I'm sorry @$user, but I'm afraid I can't do that.");
 		}
 }
 
@@ -83,7 +83,7 @@ if(isset($_GET["userid"])){
 }
 
 //if(empty($_GET["song"]) || empty($_GET["songid"])){
-//	die("$user did not specify a song or songID.");
+//	die("@$user did not specify a song or songID.");
 //}
 
 //get broadcaster
@@ -122,12 +122,12 @@ if(isset($_GET["cancel"])){
 			while($row2 = mysqli_fetch_assoc($retval2)){
 		        $sql3 = "UPDATE sm_requests SET state = 'canceled' WHERE id = '{$request_id}'";
         		$retval3 = mysqli_query( $conn, $sql3 );
-				echo "Canceled {$user}'s request for ".trim($row2["title"]." ".$row2["subtitle"]);
+				echo "Canceled @$user's request for ".trim($row2["title"]." ".$row2["subtitle"]);
 			}
 		}
 
 	}else{
-		echo "$user hasn't requested any songs!";
+		echo "@$user hasn't requested any songs!";
 	}
 
 die();
@@ -140,7 +140,7 @@ if(isset($_GET["skip"])){
 	}elseif(empty($_GET["skip"])){
 		$num = 0;
 	}else{
-		die("Good one, ".$user. ", but only positive integers are allowed!");
+		die("Good one, @$user, but only positive integers are allowed!");
 	}
 
 	$sql = "SELECT * FROM sm_requests WHERE broadcaster LIKE '{$broadcasterQuery}' AND state <> 'canceled' AND state <> 'skipped' AND state <> 'completed' ORDER BY request_time DESC LIMIT 1 OFFSET {$num}";
@@ -154,7 +154,7 @@ if(isset($_GET["skip"])){
 					while($row2 = mysqli_fetch_assoc($retval2)){
 						$sql3 = "UPDATE sm_requests SET state=\"skipped\" WHERE id = \"$request_id\"";
 						$retval3 = mysqli_query( $conn, $sql3 );
-						echo "$user skipped ".trim($row2["title"]." ".$row2["subtitle"]);
+						echo "@$user skipped ".trim($row2["title"]." ".$row2["subtitle"]);
 					}
                 }
 
@@ -168,7 +168,7 @@ if(isset($_GET["complete"])){
 	}elseif(empty($_GET["complete"])){
 		$num = 0;
 	}else{
-		die("Good one, ".$user. ", but only positive integers are allowed!");
+		die("Good one, @$user, but only positive integers are allowed!");
 	}
 
 	$sql = "SELECT * FROM sm_requests WHERE broadcaster LIKE '{$broadcasterQuery}' AND state <> 'canceled' AND state <> 'skipped' AND state <> 'requested' ORDER BY request_time DESC LIMIT 1 OFFSET {$num}";
@@ -182,7 +182,7 @@ if(isset($_GET["complete"])){
 					while($row2 = mysqli_fetch_assoc($retval2)){
 						$sql3 = "UPDATE sm_requests SET state=\"completed\" WHERE id = \"$request_id\"";
 						$retval3 = mysqli_query( $conn, $sql3 );
-						echo "$user completed ".trim($row2["title"]." ".$row2["subtitle"]);
+						echo "@$user completed ".trim($row2["title"]." ".$row2["subtitle"]);
 					}
                 }
 
@@ -193,7 +193,7 @@ if(isset($_GET["songid"]) && !empty($_GET["songid"])){
 	$commandArgs = parseCommandArgs($_GET["songid"],$user,$broadcaster);
 
 	if(empty($commandArgs["song"])){
-		echo "$user didn't specify a song ID!";
+		echo "@$user didn't specify a song ID!";
 		die();
 	}
 
@@ -201,7 +201,7 @@ if(isset($_GET["songid"]) && !empty($_GET["songid"])){
 	$song = clean($commandArgs["song"]);
 	$song = preg_replace('/\D/','',$song);
 	if(!is_numeric($song) || empty($song)){
-		echo "$user gave an invalid song ID!";
+		echo "@$user gave an invalid song ID!";
 		die();
 	}
         //lookup by ID and request it
@@ -214,11 +214,11 @@ if(isset($_GET["songid"]) && !empty($_GET["songid"])){
         		request_song($row["id"], $user, $tier, $twitchid, $broadcaster, $commandArgs);
 				$displayModeDiff = display_ModeDiff($commandArgs);
 				$displayArtist = get_duplicate_song_artist ($row["id"]);
-        		echo "$user requested " . trim($row["title"]." ".$row["subtitle"]). $displayArtist . " from " . $row["pack"].$displayModeDiff;
+        		echo "@$user requested " . trim($row["title"]." ".$row["subtitle"]). $displayArtist . " from " . $row["pack"].$displayModeDiff;
         		die();
     		}
 	} else {
-        	echo "$user => Didn't find any songs matching the ID: " . $song . "!";
+        	echo "@$user => Didn't find any songs matching the ID: " . $song . "!";
         	die();
 }
 
@@ -229,7 +229,7 @@ if(isset($_GET["song"]) && !empty($_GET["song"])){
 	$commandArgs = parseCommandArgs($_GET["song"],$user,$broadcaster);
 
 	if(empty($commandArgs["song"])){
-		echo "$user didn't specify a song name!";
+		echo "@$user didn't specify a song name!";
 		die();
 	}
 
@@ -249,7 +249,7 @@ if(isset($_GET["song"]) && !empty($_GET["song"])){
         	request_song($row["id"], $user, $tier, $twitchid, $broadcaster, $commandArgs);
 			$displayModeDiff = display_ModeDiff($commandArgs);
 			$displayArtist = get_duplicate_song_artist ($row["id"]);
-        	echo "$user requested " . trim($row["title"]." ".$row["subtitle"]). $displayArtist . " from " . $row["pack"].$displayModeDiff;;
+        	echo "@$user requested " . trim($row["title"]." ".$row["subtitle"]). $displayArtist . " from " . $row["pack"].$displayModeDiff;;
     	}
 	die();
 	//end exact match
@@ -267,14 +267,14 @@ if(isset($_GET["song"]) && !empty($_GET["song"])){
 			request_song($row["id"], $user, $tier, $twitchid, $broadcaster, $commandArgs);
 			$displayModeDiff = display_ModeDiff($commandArgs);
 			$displayArtist = get_duplicate_song_artist ($row["id"]);
-        	echo "$user requested " . trim($row["title"]." ".$row["subtitle"]). $displayArtist . " from " . $row["pack"].$displayModeDiff;;
+        	echo "@$user requested " . trim($row["title"]." ".$row["subtitle"]). $displayArtist . " from " . $row["pack"].$displayModeDiff;;
     	}
 	die();
 	//end one match
 	}
 	//no one match
 	if (mysqli_num_rows($retval) > 0) {
-		echo "$user => Top matches (request with !requestid [song id]):";
+		echo "@$user => Top matches (request with !requestid [song id]):";
 		$i=1;
     	while($row = mysqli_fetch_assoc($retval)) {
         	if($i>4){die();}
@@ -283,9 +283,9 @@ if(isset($_GET["song"]) && !empty($_GET["song"])){
 			$i++;
     	}
 	} elseif (is_numeric($song)) {
-		echo "$user => Did you mean to use !requestid ".$song."?";
+		echo "@$user => Did you mean to use !requestid ".$song."?";
 	}else{
-		echo "$user => Didn't find any songs matching that name! Check the !songlist.";
+		echo "@$user => Didn't find any songs matching that name! Check the !songlist.";
 	}
 
 	die();
