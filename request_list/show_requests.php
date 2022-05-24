@@ -43,9 +43,14 @@ if(isset($_GET["broadcaster"]) && !empty($_GET["broadcaster"])){
 if(!isset($_GET["middle"])){
 
 echo '<html>
-<head>
-<link rel="stylesheet" href="style.css" />
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<head>';
+if (isset($_GET["style"]) && strtolower($_GET["style"]) == "horizontal") {
+echo ('<link rel="stylesheet" href="style-horizontal.css" />'); 
+}
+else {
+	echo ('<link rel="stylesheet" href="style.css" />');
+};
+echo '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 <script src="scripts.js"></script>
 </head>
 
