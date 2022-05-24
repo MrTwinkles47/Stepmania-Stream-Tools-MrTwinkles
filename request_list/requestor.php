@@ -109,6 +109,8 @@ if(isset($_GET["banuser"]) && !empty($_GET["banuser"])){
         $banUser = clean_user($_GET["banuser"]);
         if(strtolower($user) != strtolower($broadcaster) && $banUser == strtolower($broadcaster)){
                 die("@$user => You don't have that kind of power here!");
+        }elseif(strtolower($user) != strtolower($broadcaster) && $banUser == strtolower($user)){
+                die("@$user => You can't (un)ban yourself!");
         }
 	toggle_ban($banUser);
         die();
@@ -118,6 +120,8 @@ if(isset($_GET["whitelist"]) && !empty($_GET["whitelist"])){
         $whitelistUser = clean_user($_GET["whitelist"]);
         if(strtolower($user) != strtolower($broadcaster) && $whitelistUser == strtolower($broadcaster)){
                 die("@$user => You don't have that kind of power here!");
+        }elseif(strtolower($user) != strtolower($broadcaster) && $whitelistUser == strtolower($user)){
+                die("@$user => You can't (un)whitelist yourself!");
         }
         toggle_whitelist($whitelistUser);
         die();
