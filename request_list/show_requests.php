@@ -45,13 +45,13 @@ if(!isset($_GET["middle"])){
 echo '<html>
 <head>';
 if (isset($_GET["style"]) && strtolower($_GET["style"]) == "horizontal") {
-echo ('<link rel="stylesheet" href="style-horizontal.css" />'); 
+echo ('<link rel="stylesheet" href="style-horizontal.css?ver=1.73" />'); 
 }
 else {
-	echo ('<link rel="stylesheet" href="style.css" />');
+	echo ('<link rel="stylesheet" href="style.css?ver=1.73" />');
 };
 echo '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-<script src="scripts.js"></script>
+<script src="scripts.js?ver=1.73"></script>
 </head>
 
 <body>
