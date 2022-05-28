@@ -34,6 +34,27 @@ function format_pack($pack,$requestor){
 return $pack;
 }   
 
+function bg_gradient(){
+	$brightness = 0.75;
+	$direction = rand(0,360); //To output a volue between 0 and 360 in degrees to be given to the linear-gradient.
+  
+    $r1 = rand(0,255 * $brightness); 
+    $g1 = rand(0,255 * $brightness);
+    $b1 = rand(0,255 * $brightness);
+    //$a1 = rand(0,10) / 10; //transparency is a value between 0 and 1
+   
+	$r2 = rand(0,255 * $brightness);
+    $g2 = rand(0,255 * $brightness);
+    $b2 = rand(0,255 * $brightness);
+    //$a2 = rand(0,10) / 10; // to add random transparency to the image;
+  
+    //Giving values to the linear gradiant.
+    //$background = "linear-gradient(${direction}deg, rgba(${r1},${g1},${b1},${a1}), rgba(${r2},${g2},${b2},${a2}))";
+	$background = "linear-gradient(${direction}deg, rgb(${r1},${g1},${b1}), rgb(${r2},${g2},${b2}))";
+
+    return $background;
+}
+
 if(isset($_GET["broadcaster"]) && !empty($_GET["broadcaster"])){
 	$broadcaster = $_GET["broadcaster"];
 }else{
@@ -93,7 +114,8 @@ echo '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min
 		$pack_img = strtolower(preg_replace('/\s+/', '_', trim($row["pack"])));
 		$pack_img = glob("images/packs/".$pack_img.".{jpg,JPG,jpeg,JPEG,png,PNG,gif,GIF,bmp,BMP}", GLOB_BRACE);
 		if (!$pack_img){
-			$pack_img = "images/packs/unknown.png";
+			//$pack_img = "images/packs/unknown.png";
+			$pack_img = "";
 		}else{
 			$pack_img = "images/packs/".urlencode(basename($pack_img[0]));
 		}
@@ -130,8 +152,10 @@ echo '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min
 			if(isset($_GET['admin'])){echo "<span id=\"admin\" style=\"display:none;\">admin</span>\n";}
 			echo "\n";
 		}
-		
-		echo "<div class=\"songrow\" id=\"request_".$request_id."\">			
+
+		$background = "background:".bg_gradient();
+
+		echo "<div class=\"songrow\" id=\"request_".$request_id."\" style=\"$background;\">			
 		<h2>$title<h2a>$subtitle</h2a></h2>
 		<h3>$pack</h3>
 		<h4>$requestor</h4>";

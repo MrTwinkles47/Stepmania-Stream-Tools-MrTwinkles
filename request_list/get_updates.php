@@ -33,6 +33,27 @@ function format_pack($pack,$requestor){
 return $pack;
 }   
 
+function bg_gradient(){
+	$brightness = 0.75;
+	$direction = rand(0,360); //To output a volue between 0 and 360 in degrees to be given to the linear-gradient.
+  
+    $r1 = rand(0,255 * $brightness); 
+    $g1 = rand(0,255 * $brightness);
+    $b1 = rand(0,255 * $brightness);
+    //$a1 = rand(0,10) / 10; //transparency is a value between 0 and 1
+   
+	$r2 = rand(0,255 * $brightness);
+    $g2 = rand(0,255 * $brightness);
+    $b2 = rand(0,255 * $brightness);
+    //$a2 = rand(0,10) / 10; // to add random transparency to the image;
+  
+    //Giving values to the linear gradiant.
+    //$background = "linear-gradient(${direction}deg, rgba(${r1},${g1},${b1},${a1}), rgba(${r2},${g2},${b2},${a2}))";
+	$background = "linear-gradient(${direction}deg, rgb(${r1},${g1},${b1}), rgb(${r2},${g2},${b2}))";
+
+    return $background;
+}
+
 //Get new requests, cancels, and completions
 
 function get_cancels_since($id,$oldid,$broadcaster){
@@ -67,11 +88,12 @@ function get_requests_since($id,$oldid,$broadcaster){
 		$pack_img = strtolower(preg_replace('/\s+/', '_', trim($request["pack"])));
 		$pack_img = glob("images/packs/".$pack_img.".{jpg,JPG,jpeg,JPEG,png,PNG,gif,GIF,bmp,BMP}", GLOB_BRACE);
 		if (!$pack_img){
-			$request["img"] = "images/packs/unknown.png";
+			$request["img"] = "";
 		}else{
 			$request["img"] = "images/packs/".urlencode(basename($pack_img[0]));
 		}
 		$request["pack"] = format_pack($request["pack"],$request["requestor"]);
+		$request["background"] = "background:".bg_gradient();
 
 		//format request type and find image
 		$request["request_type"] = strtolower($request["request_type"]);
