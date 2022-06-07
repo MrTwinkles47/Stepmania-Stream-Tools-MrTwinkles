@@ -13,6 +13,12 @@ function new_request(array){
     img = array.img;
     background = array.background;
 
+    if(img){
+        img = `<img class="songrow-bg" src="${img}" />`;
+    }else{
+        img = "";
+    }
+
     if(request_type){
         request_type = `<img src="${request_type}" class="type">`;
     }else{
@@ -43,7 +49,7 @@ function new_request(array){
     ${request_type}\n
     ${difficulty}\n
     ${stepstype}\n
-    <img class="songrow-bg" src="${img}" />
+    ${img}\n
     <span id="request_${request_id}_time" style="display:none;">${request_time}</span>\n
     </div>
     `;

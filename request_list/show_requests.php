@@ -34,25 +34,38 @@ function format_pack($pack,$requestor){
 return $pack;
 }   
 
-function bg_gradient(){
-	$brightness = 0.75;
-	$direction = rand(0,360); //To output a volue between 0 and 360 in degrees to be given to the linear-gradient.
-  
-    $r1 = rand(0,255 * $brightness); 
-    $g1 = rand(0,255 * $brightness);
-    $b1 = rand(0,255 * $brightness);
-    //$a1 = rand(0,10) / 10; //transparency is a value between 0 and 1
-   
-	$r2 = rand(0,255 * $brightness);
-    $g2 = rand(0,255 * $brightness);
-    $b2 = rand(0,255 * $brightness);
-    //$a2 = rand(0,10) / 10; // to add random transparency to the image;
+function rand_gradient(string $pack){
+	$brightness = 0.75; //match brightness applied to pack images
+	$direction = 360 / str_word_count($pack); //To output a value between 0 and 360 in degrees to be given to the linear-gradient.
+	
+	$pack = strtolower(str_ireplace(" ","",$pack));
+	$packMD5 = md5($pack);
+
+	$colorHex = array();
+	$colorHex[] = substr($packMD5, 0, 6); //first 6 characters
+	$colorHex[] = substr($packMD5, -6); //last 6 characters
+
+	$colorRGB = array();
+	for($x = 0; $x <= 1; $x++){
+		//for each 2 hex colors
+		for($i = 0; $i <= 4; $i+=2){
+			//split each 2 character hex value and convert to dec
+			$colorRGB[$x][] = hexdec(substr($colorHex[$x],$i,2)) * $brightness;
+		} 
+	}
+	
+	// $r1 = hexdec(substr($colorHex[0],0,2)) * $brightness; 
+    // $g1 = hexdec(substr($colorHex[0],2,2)) * $brightness;
+    // $b1 = hexdec(substr($colorHex[0],4,2)) * $brightness;
+	// $r2 = hexdec(substr($colorHex[1],0,2)) * $brightness; 
+    // $g2 = hexdec(substr($colorHex[1],2,2)) * $brightness;
+    // $b2 = hexdec(substr($colorHex[1],4,2)) * $brightness;
   
     //Giving values to the linear gradiant.
     //$background = "linear-gradient(${direction}deg, rgba(${r1},${g1},${b1},${a1}), rgba(${r2},${g2},${b2},${a2}))";
-	$background = "linear-gradient(${direction}deg, rgb(${r1},${g1},${b1}), rgb(${r2},${g2},${b2}))";
+	$background = "linear-gradient(${direction}deg, rgb({$colorRGB[0][0]},{$colorRGB[0][1]},{$colorRGB[0][2]}), rgb({$colorRGB[1][0]},{$colorRGB[1][1]},{$colorRGB[1][2]}))";
 
-    return $background;
+    return (string)$background;
 }
 
 if(isset($_GET["broadcaster"]) && !empty($_GET["broadcaster"])){
@@ -153,7 +166,7 @@ echo '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min
 			echo "\n";
 		}
 
-		$background = "background:".bg_gradient();
+		$background = "background:".rand_gradient($row['pack']);
 
 		echo "<div class=\"songrow\" id=\"request_".$request_id."\" style=\"$background;\">			
 		<h2>$title<h2a>$subtitle</h2a></h2>
@@ -162,8 +175,10 @@ echo '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min
 		echo $request_type."\n";
 		echo $difficulty."\n";
 		echo $stepstype."\n";
-		echo "<img class=\"songrow-bg\" src=\"{$pack_img}\" />
-		<span id=\"request_${request_id}_time\" style=\"display:none;\">$request_time</span>\n
+		if($pack_img){
+			echo "<img class=\"songrow-bg\" src=\"{$pack_img}\" />\n";
+		}
+		echo "<span id=\"request_${request_id}_time\" style=\"display:none;\">$request_time</span>\n
 		</div>\n";
 		if(isset($_GET['admin'])){
 			echo "<div class=\"admindiv\" id=\"requestadmin_".$request_id."\">
