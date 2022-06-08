@@ -35,7 +35,7 @@ return $pack;
 
 function rand_gradient(string $pack){
 	$brightness = 0.75; //match brightness applied to pack images
-	$direction = 360 / str_word_count($pack); //To output a value between 0 and 360 in degrees to be given to the linear-gradient.
+	$direction = 180 / count(explode(" ",$pack)); //To output a value between 0 and 360 in degrees to be given to the linear-gradient.
 	
 	$pack = strtolower(str_ireplace(" ","",$pack));
 	$packMD5 = md5($pack);
@@ -49,7 +49,7 @@ function rand_gradient(string $pack){
 		//for each 2 hex colors
 		for($i = 0; $i <= 4; $i+=2){
 			//split each 2 character hex value and convert to dec
-			$colorRGB[$x][] = hexdec(substr($colorHex[$x],$i,2)) * $brightness;
+			$colorRGB[$x][] = round(hexdec(substr($colorHex[$x],$i,2)) * $brightness);
 		} 
 	}
 	
