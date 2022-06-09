@@ -35,11 +35,13 @@ return $pack;
 }   
 
 function rand_gradient(string $pack){
+	//Use the pack name to generate two colors and a direction for a linear gradient to use for the background of a song request
+	//
 	$brightness = 0.75; //match brightness applied to pack images
-	$direction = 180 / count(explode(" ",$pack)); //To output a value between 0 and 360 in degrees to be given to the linear-gradient.
+	$direction = 180 / count(explode(" ",$pack)); //use the number of words in a pack name out of 180 degrees to be given to the linear-gradient.
 	
-	$pack = strtolower(str_ireplace(" ","",$pack));
-	$packMD5 = md5($pack);
+	$pack = strtolower(str_ireplace(" ","",$pack)); //remove all spaces and convert to lowercase
+	$packMD5 = md5($pack); //get md5 hash
 
 	$colorHex = array();
 	$colorHex[] = substr($packMD5, 0, 6); //first 6 characters
@@ -53,13 +55,6 @@ function rand_gradient(string $pack){
 			$colorRGB[$x][] = round(hexdec(substr($colorHex[$x],$i,2)) * $brightness);
 		} 
 	}
-	
-	// $r1 = hexdec(substr($colorHex[0],0,2)) * $brightness; 
-    // $g1 = hexdec(substr($colorHex[0],2,2)) * $brightness;
-    // $b1 = hexdec(substr($colorHex[0],4,2)) * $brightness;
-	// $r2 = hexdec(substr($colorHex[1],0,2)) * $brightness; 
-    // $g2 = hexdec(substr($colorHex[1],2,2)) * $brightness;
-    // $b2 = hexdec(substr($colorHex[1],4,2)) * $brightness;
   
     //Giving values to the linear gradiant.
     //$background = "linear-gradient(${direction}deg, rgba(${r1},${g1},${b1},${a1}), rgba(${r2},${g2},${b2},${a2}))";
