@@ -424,9 +424,17 @@ function get_progress($timeChunkStart, $currentChunk, $totalChunks, array $chunk
 	$percentChunk = round (($currentChunk / $totalChunks) * 100, 0); //"integer" percent
 
 	$avgTimePerChunk = array_sum($chunkTimes) / count($chunkTimes);
-	$timeRemain = round (($avgTimePerChunk * $chunksRemain) / 60, 1); //minutes
+	$timeRemain = $avgTimePerChunk * $chunksRemain; //seconds
 
-	$progress = array('percent' => $percentChunk, 'time' => $timeRemain, 'chunktimes' => $chunkTimes);
+	if($timeRemain > 60){
+		$timeUnit = "mins";
+		$timeRemain = round ($timeRemain / 60, 1); //minutes
+	}elseif($timeRemain <= 60){
+		$timeUnit = "secs";
+		$timeRemain = round ($timeRemain, 0); //seconds
+	}
+
+	$progress = array('percent' => $percentChunk, 'time' => $timeRemain, 'unit' => $timeUnit, 'chunktimes' => $chunkTimes);
 
 	return (array) $progress;
 }
@@ -589,8 +597,8 @@ foreach ($files as $filesChunk){
 	}
 	//show progress of file chunks
 	$progress = get_progress($timeChunkStart,$currentChunk,$totalChunks,$chunkTimes);
-	echo $progress['percent'] . "% Complete  |  " . $progress['time'] . " mins remaining..." . PHP_EOL;
-	wh_log ($progress['percent'] . "% Complete  |  " . $progress['time'] . " mins remaining...");
+	echo $progress['percent'] . "% Complete  |  " . $progress['time'] . " " . $progress['unit'] . " remaining..." . PHP_EOL;
+	wh_log ($progress['percent'] . "% Complete  |  " . $progress['time'] . " " . $progress['unit'] . " remaining...");
 	$chunkTimes = $progress['chunktimes'];
 
 	$currentChunk++;
