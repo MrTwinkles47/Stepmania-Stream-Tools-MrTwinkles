@@ -360,43 +360,61 @@ function doesFileExist(string $songFilename){
 	}
 
 	//check if the chart file exists on the filesystem
-	if(substr($songFilename,0,strpos($songFilename,"/",1)+1) == "/Songs/"){
+	if(preg_match('/^\/Songs\//',$songFilename)){
 		//file is in the normal "Songs" folder
-		$songFilename = str_replace("/Songs/",$songsDir."/",$songFilename);
-		if(file_exists($songFilename)){
+		if(is_array($songsDir)){
+			//incorrectly configured as an array. Use only the first directory.
+			$songsDir = $songsDir[0];
+			wh_log("StepMania supports *only* a single 'Songs' folder. Using the first directory in the array: \"".$songsDir."\"");
+		}
+		$songFilenameAbs = preg_replace('/^\/Songs\//',$songsDir."/",$songFilename);
+		if(file_exists($songFilenameAbs)){
 			$return = TRUE;
 		}else{
 			//try converting back to ISO-8859-1. Maybe there is a non-UTF-8 character found in a Windows filename?
-			$songFilename = utf8_decode($songFilename);
-			if(file_exists($songFilename)){
+			$songFilenameAbs = utf8_decode($songFilenameAbs);
+			if(file_exists($songFilenameAbs)){
 				$return = TRUE;
 			}else{
-				wh_log("File Not Found: ".$songFilename);
+				wh_log("'/Songs/' File Not Found: ".$songFilenameAbs);
 			}
 		}
-	}elseif(substr($songFilename,0,strpos($songFilename,"/",1)+1) == "/AdditionalSongs/" && !empty($addSongsDir)){
+	}elseif(preg_match('/^\/AdditionalSongs\//',$songFilename)){
 		//file is in one of the "AdditionalSongs" folder(s)
+		if(empty($addSongsDir)){
+			//AdditionalSongsFolder is missing in config file. Exit.
+			wh_log("It appears you are using an \"AdditionalSongsFolder\" and it was not specified in the configuration file! Please add the folder(s) to the config.php file.");
+			die("It appears you are using an \"AdditionalSongsFolder\" and it was not specified in the configuration file! Please add the folder(s) to the config.php file.".PHP_EOL);
+		}
+
 		if(!is_array($addSongsDir)){
 			$addSongsDir = array($addSongsDir);
 		}
-		foreach($addSongsDir as $songsDir){
+		foreach($addSongsDir as $dir){
 			//loop through the "AdditionalSongsFolders"
-			$songFilename = str_replace("/AdditionalSongs/",$songsDir."/",$songFilename);
-			if(file_exists($songFilename)){
+			$songFilenameAbs = preg_replace('/^\/AdditionalSongs\//',$dir."/",$songFilename);
+			if(file_exists($songFilenameAbs)){
 				$return = TRUE;
+				break;
 			}else{
 				//try converting back to ISO-8859-1. Maybe there is a non-UTF-8 character found in a Windows filename?
-				$songFilename = utf8_decode($songFilename);
-				if(file_exists($songFilename)){
+				$songFilenameAbs = utf8_decode($songFilenameAbs);
+				if(file_exists($songFilenameAbs)){
 					$return = TRUE;
+					break;
 				}else{
-					wh_log("File Not Found: ".$songFilename);
+					//wh_log("File Not Found: ".$songFilename);
 				}
 			}
 		}
-	}elseif(substr($songFilename,0,strpos($songFilename,"/",1)+1) == "/AdditionalSongs/" && empty($addSongsDir)){
-		wh_log("It appears you are using an \"AdditionalSongsFolder\" and it was not specified in the configuration file! Please add the folder(s) to the config.php file.");
-		die("It appears you are using an \"AdditionalSongsFolder\" and it was not specified in the configuration file! Please add the folder(s) to the config.php file.".PHP_EOL);
+		//looped through all AdditionSongs folders
+		if(!$return){
+			//did not find file in ANY folder
+			wh_log("'/AdditionalSongs/' File Not Found: ".$songFilenameAbs);
+		}
+	}else{
+		wh_log("Something is wrong with the song cache files. Songs must either be in '/Songs/' or '/AdditionalSongs/'");
+		die("Something is wrong with the song cache files. Songs must either be in '/Songs/' or '/AdditionalSongs/'" . PHP_EOL);
 	}
 
 	return (bool) $return;
