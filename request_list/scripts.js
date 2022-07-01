@@ -11,6 +11,13 @@ function new_request(array){
 	artist = array.artist;
 	pack = array.pack;
     img = array.img;
+    background = array.background;
+
+    if(img){
+        img = `<img class="songrow-bg" src="${img}" />`;
+    }else{
+        img = "";
+    }
 
     if(request_type){
         request_type = `<img src="${request_type}" class="type">`;
@@ -35,14 +42,14 @@ function new_request(array){
 
 	console.log("Adding request "+request_id);
 
-    data = `<div class="songrow" style="display:none" id="request_${request_id}">
+    data = `<div class="songrow" style="${background};" id="request_${request_id}">
     <h2>${title}<h2a>${subtitle}</h2a></h2>
     <h3>${pack}</h3>
     <h4>${requestor}</h4>\n
     ${request_type}\n
     ${difficulty}\n
     ${stepstype}\n
-    <img class="songrow-bg" src="${img}" />
+    ${img}\n
     <span id="request_${request_id}_time" style="display:none;">${request_time}</span>\n
     </div>
     `;
@@ -79,7 +86,7 @@ function completion(id){
 		if( $("#request_"+request_id).hasClass("completed") ){
 		}else{
             console.log("Completing request "+request_id);
-            $("#request_"+request_id).removeAttr("style");
+            //$("#request_"+request_id).removeAttr("style");
             $("#request_"+request_id).addClass("completed");
             $("#requestadmin_"+request_id).slideUp(600, function() {this.remove(); });
 			$("#request_"+request_id).append("<img src=\"images/check.png\" class=\"check\" />");

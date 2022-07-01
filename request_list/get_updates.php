@@ -33,6 +33,35 @@ function format_pack($pack,$requestor){
 return $pack;
 }   
 
+function rand_gradient(string $pack){
+	//Use the pack name to generate two colors and a direction for a linear gradient to use for the background of a song request
+	//
+	$brightness = 0.75; //match brightness applied to pack images
+	$direction = 180 / count(explode(" ",$pack)); //use the number of words in a pack name out of 180 degrees to be given to the linear-gradient.
+	
+	$pack = strtolower(str_ireplace(" ","",$pack)); //remove all spaces and convert to lowercase
+	$packMD5 = md5($pack); //get md5 hash
+
+	$colorHex = array();
+	$colorHex[] = substr($packMD5, 0, 6); //first 6 characters
+	$colorHex[] = substr($packMD5, -6); //last 6 characters
+
+	$colorRGB = array();
+	for($x = 0; $x <= 1; $x++){
+		//for each 2 hex colors
+		for($i = 0; $i <= 4; $i+=2){
+			//split each 2 character hex value and convert to dec
+			$colorRGB[$x][] = round(hexdec(substr($colorHex[$x],$i,2)) * $brightness);
+		} 
+	}
+  
+    //Giving values to the linear gradiant.
+    //$background = "linear-gradient(${direction}deg, rgba(${r1},${g1},${b1},${a1}), rgba(${r2},${g2},${b2},${a2}))";
+	$background = "linear-gradient(${direction}deg, rgb({$colorRGB[0][0]},{$colorRGB[0][1]},{$colorRGB[0][2]}), rgb({$colorRGB[1][0]},{$colorRGB[1][1]},{$colorRGB[1][2]}))";
+
+    return (string)$background;
+}
+
 //Get new requests, cancels, and completions
 
 function get_cancels_since($id,$oldid,$broadcaster){
@@ -67,10 +96,11 @@ function get_requests_since($id,$oldid,$broadcaster){
 		$pack_img = strtolower(preg_replace('/\s+/', '_', trim($request["pack"])));
 		$pack_img = glob("images/packs/".$pack_img.".{jpg,JPG,jpeg,JPEG,png,PNG,gif,GIF,bmp,BMP}", GLOB_BRACE);
 		if (!$pack_img){
-			$request["img"] = "images/packs/unknown.png";
+			$request["img"] = "";
 		}else{
 			$request["img"] = "images/packs/".urlencode(basename($pack_img[0]));
 		}
+		$request["background"]= "background:".rand_gradient($request['pack']);
 		$request["pack"] = format_pack($request["pack"],$request["requestor"]);
 
 		//format request type and find image
