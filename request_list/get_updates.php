@@ -37,7 +37,7 @@ function rand_gradient(string $pack){
 	//Use the pack name to generate two colors and a direction for a linear gradient to use for the background of a song request
 	//
 	$brightness = 0.75; //match brightness applied to pack images
-	$direction = 180 / count(explode(" ",$pack)); //use the number of words in a pack name out of 180 degrees to be given to the linear-gradient.
+	$direction = round( 180 / count(explode(" ",$pack))); //use the number of words in a pack name out of 180 degrees to be given to the linear-gradient.
 	
 	$pack = strtolower(str_ireplace(" ","",$pack)); //remove all spaces and convert to lowercase
 	$packMD5 = md5($pack); //get md5 hash
