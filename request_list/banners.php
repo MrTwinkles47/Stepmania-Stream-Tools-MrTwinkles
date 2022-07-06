@@ -25,11 +25,16 @@ if(isset($_SERVER['HTTP_KEY'])){
 	die("No valid HTTP security_key header" . PHP_EOL);
 }
 
-//if(!isset($_POST["security_key"]) || $_POST["security_key"] != $security_key || empty($_POST["security_key"])){die("Fuck off");}
+//Attempt to decode POST data.
+$metadata = json_decode($_POST['metadata'], true, JSON_INVALID_UTF8_IGNORE);
+//If json_decode failed, the JSON is invalid.
+if(!is_array($metadata)){
+    die('Received content contained invalid JSON!' . PHP_EOL);
+}
 
 //get version of client
-if(isset($_POST['version'])){
-	$versionClient = $_POST['version'];
+if(isset($metadata['version'])){
+	$versionClient = $metadata['version'];
 }else{
 	$versionClient = 0;
 }
@@ -43,6 +48,16 @@ if($_FILES['file_contents']['size'] > $fileSizeMax){
 $uploadfile = $uploaddir .'/'. $_FILES['file_contents']['name'];
 
 if(!file_exists($uploadfile)){
+	//check if any image exists for the old pack name
+	if(isset($metadata['pack_name_old'])){
+		$files = glob($uploaddir."/".$metadata['pack_name_old'].".{jpg,JPG,jpeg,JPEG,png,PNG,gif,GIF,bmp,BMP}",GLOB_BRACE);
+		if(count($files) > 0){
+			//an image exists for the old pack name, let's remove it
+			array_map('unlink',$files);
+			echo "Removed previous banner image for ".$metadata['pack_name_old'].PHP_EOL;
+		}
+	}
+	
 	//No banner exists, move the temp uploaded file to the banner directory
 	if (move_uploaded_file($_FILES['file_contents']['tmp_name'], $uploadfile)) {
 		echo "Successfully uploaded banner for ".$_FILES['file_contents']['name'].PHP_EOL;
