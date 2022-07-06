@@ -9,6 +9,19 @@ if(!isset($_GET["security_key"]) || $_GET["security_key"] != $security_key || em
 $conn = mysqli_connect(dbhost, dbuser, dbpass, db);
 if(! $conn ) {die('Could not connect: ' . mysqli_error($conn));}
 $conn->set_charset("utf8mb4");
+
+function clean_filename(string $filename){
+	//Trim
+	$filename = trim($filename);
+	// Replaces all spaces with underscores. 
+    $filename = str_replace(' ', '_', $filename); 
+    // Removes special chars. 
+    $filename = preg_replace('/[^A-Za-z0-9]/', '', $filename); 
+    // Replaces multiple underscores with single one. 
+    $filename = preg_replace('/_+/', '_', $filename);
+	
+	return (string) $filename;
+}
    
 function format_pack($pack,$requestor){
 	$length = 40;
@@ -119,7 +132,7 @@ echo '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min
 		$stepstype = strtolower($row["stepstype"]);
 		$difficulty = strtolower($row["difficulty"]);
 
-		$pack_img = strtolower(preg_replace('/\s+/', '_', trim($row["pack"])));
+		$pack_img = strtolower(clean_filename($row["pack"]));
 		$pack_img = glob("images/packs/".$pack_img.".{jpg,JPG,jpeg,JPEG,png,PNG,gif,GIF,bmp,BMP}", GLOB_BRACE);
 		if (!$pack_img){
 			//$pack_img = "images/packs/unknown.png";

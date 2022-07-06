@@ -186,7 +186,20 @@ function does_banner_exist($file,$pack_name){
 	return $return;
 }
 
-function curl_upload($file,$pack_name){
+function clean_filename(string $filename){
+	//Trim
+	$filename = trim($filename);
+	// Replaces all spaces with underscores. 
+    $filename = str_replace(' ', '_', $filename); 
+    // Removes special chars. 
+    $filename = preg_replace('/[^A-Za-z0-9]/', '', $filename); 
+    // Replaces multiple underscores with single one. 
+    $filename = preg_replace('/_+/', '_', $filename);
+	
+	return (string) $filename;
+}
+
+function curl_upload($file,$pack_name,$pack_name_old = null){
 	global $targetURL;
 	global $security_key;
 	unset($ch,$post,$cFile);
@@ -199,8 +212,9 @@ function curl_upload($file,$pack_name){
 	//special curl function to create the information needed to upload files
 	//renaming the banner images to be consistent with the pack name
 	$cFile = curl_file_create($file,'',$pack_name.'.'.strtolower(pathinfo($file,PATHINFO_EXTENSION)));
-	//add the security_key to the array
-	$post = array('version' => $versionClient, 'file_contents'=> $cFile);
+	//add post data and file upload to the POST array
+	$metadata = json_encode(array('version' => $versionClient, 'pack_name_old'=> $pack_name_old));
+	$post = array('metadata' => $metadata, 'file_contents'=> $cFile);
 	//this curl method only works with PHP 5.5+
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL,$targetURL."/banners.php");
@@ -276,7 +290,8 @@ foreach ($pack_dir as $path){
 	if(!isIgnoredPack($pack_name)){
 		//pack is not ignored
 		//clean up pack name and replace spaces with underscore
-		$pack_name = strtolower(preg_replace('/\s+/', '_', trim($pack_name)));
+		$pack_name_old = strtolower(preg_replace('/\s+/', '_', trim($pack_name)));
+		$pack_name = strtolower(clean_filename($pack_name));
 		//look for any picture file in the pack directory
 		$img_path = glob("{$path}/*{jpg,JPG,jpeg,JPEG,png,PNG,gif,GIF,bmp,BMP}",GLOB_BRACE);
 		
@@ -293,7 +308,7 @@ foreach ($pack_dir as $path){
 				echo $pack_name."'s image file is too large (max size: ". $fileSizeMax / 1024^2 ."MB)!" . PHP_EOL;
 				wh_log($pack_name."'s image file is too large (max size: ". $fileSizeMax / 1024^2 ."MB)!");
 			}else{
-				$img_arr[] = array('img_path' => $img_path,'pack_name' => $pack_name);
+				$img_arr[] = array('img_path' => $img_path,'pack_name' => $pack_name,'pack_name_old' => $pack_name_old);
 			}
 		}else{
 			echo "No banner image for ".$pack_name. PHP_EOL;
@@ -309,7 +324,7 @@ foreach ($img_arr as $img){
 	//	echo "Banner for ". $img['pack_name'] . " already exists. Skipping...".PHP_EOL;
 	//}else{
 		//upload banner images
-		if(curl_upload($img['img_path'],$img['pack_name']) === 0){
+		if(curl_upload($img['img_path'],$img['pack_name'],$img['pack_name_old']) === 0){
 			$banners_copied++;
 		}
 	//}
