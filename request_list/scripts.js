@@ -1,3 +1,11 @@
+$.urlParam = function(name){
+    var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
+    if (results==null) {
+       return "";
+    }
+    return decodeURI(results[1]) || 0;
+}
+
 function new_request(array){
 	request_id = array.id;
 	song_id = array.song_id;
@@ -53,7 +61,7 @@ function new_request(array){
     <span id="request_${request_id}_time" style="display:none;">${request_time}</span>\n
     </div>
     `;
-    if ($("#admin").html()){
+    if ($.urlParam('admin') != undefined){
         data = data + `<div class=\"admindiv\" id=\"requestadmin_${request_id}\">
         <button class=\"adminbuttons\" style=\"margin-left:4vw; background-color:rgb(0, 128, 0);\" type=\"button\" onclick=\"MarkCompleted(${request_id})\">Mark Complete</button>\n
         <button class=\"adminbuttons\" style=\"background-color:rgb(153, 153, 0);\" type=\"button\" onclick=\"MarkSkipped(${request_id})\">Mark Skipped</button>
@@ -105,7 +113,7 @@ function skipped(id){
 }
 
 function MarkCompleted(id){
-    security_key = $("#security_key").html();
+    security_key = $.urlParam('security_key');
     url = `get_updates.php?security_key=${security_key}&func=MarkCompleted&id=${id}`;
         $.ajax({url: url, success: function(result){
             if(result){
@@ -119,7 +127,7 @@ function MarkCompleted(id){
     }
     
 function MarkSkipped(id){
-    security_key = $("#security_key").html();
+    security_key = $.urlParam('security_key');
     url = `get_updates.php?security_key=${security_key}&func=MarkSkipped&id=${id}`;
     $.ajax({url: url, success: function(result){
         if(result){
@@ -133,7 +141,7 @@ function MarkSkipped(id){
 }
 
 function MarkBanned(id){
-    security_key = $("#security_key").html();
+    security_key = $.urlParam('security_key');
     url = `get_updates.php?security_key=${security_key}&func=MarkBanned&id=${id}`;
     $.ajax({url: url, success: function(result){
         if(result){
@@ -149,12 +157,11 @@ function MarkBanned(id){
 function refresh_data(){
 lastid = $("#lastid").html();
 oldid = $("#oldid").html();
-security_key = $("#security_key").html();
-broadcaster = $("#broadcaster").html();
+security_key = $.urlParam('security_key');
+broadcaster = $.urlParam('broadcaster');
 url = `get_updates.php?security_key=${security_key}&broadcaster=${broadcaster}&id=${lastid}&oldid=${oldid}`;
     $.ajax({url: url, success: function(result){
-		if(result){
-			result = JSON.parse(result);
+		if(result = JSON.parse(result)){
 			if(result["requests"].length > 0){
 				howmany = result["requests"].length;
 				console.log(howmany+" new request(s)");

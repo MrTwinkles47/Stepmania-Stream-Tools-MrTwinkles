@@ -76,16 +76,17 @@ function rand_gradient(string $pack){
     return (string)$background;
 }
 
+$broadcaster = "%";
+
 if(isset($_GET["broadcaster"]) && !empty($_GET["broadcaster"])){
 	$broadcaster = $_GET["broadcaster"];
-}else{
-	$broadcaster = "%";
 }
 
-if(!isset($_GET["middle"])){
-
-echo '<html>
-<head>';
+echo '<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+';
 if (isset($_GET["style"]) && strtolower($_GET["style"]) == "horizontal") {
 echo ('<link rel="stylesheet" href="style-horizontal.css?ver=1.73" />'); 
 }
@@ -99,19 +100,16 @@ echo '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min
 <body>
 <audio id="new" src="new.mp3" type="audio/mpeg"></audio>
 <audio id="cancel" src="cancel.mp3" type="audio/mpeg"></audio>
-<div id="middle">
+<div id="middle">';
 
-';
-
-}
 	//parse url parameter for request board length
+	$requestWidgetLength = 10; //default value
 	if ( isset($_GET['length']) && !empty($_GET['length']) && is_numeric($_GET['length'])) {
 		//is valid number
 		$requestWidgetLength = $_GET['length'];
-	}else{
-		//not valid number, use default
-		$requestWidgetLength = 10;
 	}
+
+	$i = 0;
 
 	$sql = "SELECT sm_requests.id AS id, sm_requests.song_id AS song_id, title, subtitle, artist, pack, requestor, request_time, request_type, stepstype, difficulty 
 			FROM sm_requests 
@@ -167,33 +165,29 @@ echo '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min
 		if(empty($stepstype)){$difficulty = "";}
 		
 		if($i == 0){
-			echo "<span id=\"lastid\" style=\"display:none;\">$request_id</span>\n";
-			echo "<span id=\"security_key\" style=\"display:none;\">".urlencode($_GET["security_key"])."</span>\n";
-			echo "<span id=\"broadcaster\" style=\"display:none;\">".urlencode($broadcaster)."</span>\n";
-			if(isset($_GET['admin'])){echo "<span id=\"admin\" style=\"display:none;\">admin</span>\n";}
-			echo "\n";
+			echo "<span id=\"lastid\" style=\"display:none;\">$request_id</span>";
 		}
 
 		$background = "background:".rand_gradient($row['pack']);
 
-		echo "<div class=\"songrow\" id=\"request_".$request_id."\" style=\"$background;\">			
+		echo "<div class=\"songrow\" id=\"request_".$request_id."\" style=\"$background;\">
 		<h2>$title<h2a>$subtitle</h2a></h2>
 		<h3>$pack</h3>
 		<h4>$requestor</h4>";
-		echo $request_type."\n";
-		echo $difficulty."\n";
-		echo $stepstype."\n";
+		echo $request_type;
+		echo $difficulty;
+		echo $stepstype;
 		if($pack_img){
-			echo "<img class=\"songrow-bg\" src=\"{$pack_img}\" />\n";
+			echo "<img class=\"songrow-bg\" src=\"{$pack_img}\" />";
 		}
-		echo "<span id=\"request_${request_id}_time\" style=\"display:none;\">$request_time</span>\n
-		</div>\n";
+		echo "<span id=\"request_${request_id}_time\" style=\"display:none;\">$request_time</span>
+		</div>";
 		if(isset($_GET['admin'])){
 			echo "<div class=\"admindiv\" id=\"requestadmin_".$request_id."\">
-			<button class=\"adminbuttons\" style=\"margin-left:4vw; background-color:rgb(0, 128, 0);\" type=\"button\" onclick=\"MarkCompleted(".$request_id.")\">Mark Complete</button>\n
+			<button class=\"adminbuttons\" style=\"margin-left:4vw; background-color:rgb(0, 128, 0);\" type=\"button\" onclick=\"MarkCompleted(".$request_id.")\">Mark Complete</button>
 			<button class=\"adminbuttons\" style=\"background-color:rgb(153, 153, 0);\" type=\"button\" onclick=\"MarkSkipped(".$request_id.")\">Mark Skipped</button>
 			<button class=\"adminbuttons\" style=\"margin-right:4vw; float:right; background-color:rgb(178, 34, 34);\" type=\"button\" onclick=\"MarkBanned(".$request_id.")\">Mark Banned</button>
-			</div>\n";
+			</div>";
 		}
 
 		$ids[] = $request_id;
@@ -207,7 +201,7 @@ if(!is_array($ids) || empty($ids)){
 	$oldid = min($ids);
 }
 	
-echo "<span id=\"oldid\" style=\"display:none;\">{$oldid}</span>\n";
+echo "<span id=\"oldid\" style=\"display:none;\">{$oldid}</span>";
 echo "
 </div>
 </html>";

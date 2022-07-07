@@ -188,10 +188,8 @@ function MarkCompleted($requestid){
 	}
 
 	if($numrows == 1){
-			$row0 = mysqli_fetch_assoc($retval0);
-			
 			$sql = "UPDATE sm_requests SET state=\"completed\" WHERE id=\"$requestid\" LIMIT 1";
-			$retval = mysqli_query( $conn, $sql );
+			mysqli_query( $conn, $sql );
 
 			//echo "Request ".$requestid." updated to Completed";
 			$requestupdated = 1;
@@ -214,11 +212,9 @@ function MarkSkipped($requestid){
 		//die("Mark Skipped request could not be found.");
 	}
 
-	if($numrows == 1){
-			$row0 = mysqli_fetch_assoc($retval0);
-			
+	if($numrows == 1){			
 			$sql = "UPDATE sm_requests SET state=\"skipped\" WHERE id=\"$requestid\" LIMIT 1";
-			$retval = mysqli_query( $conn, $sql );
+			mysqli_query( $conn, $sql );
 
 			//echo "Request ".$requestid." updated to skipped";
 			$requestupdated = 1;
@@ -246,10 +242,10 @@ function MarkBanned($requestid){
 			$song_id = $row0['song_id'];
 			
 			$sql = "UPDATE sm_songs SET banned = 1 WHERE id=\"$song_id\" LIMIT 1";
-			$retval = mysqli_query( $conn, $sql );
+			mysqli_query( $conn, $sql );
 
 			$sql = "UPDATE sm_requests SET state=\"skipped\" WHERE id=\"$requestid\" LIMIT 1";
-			$retval = mysqli_query( $conn, $sql );
+			mysqli_query( $conn, $sql );
 
 			//echo "Song from request ".$requestid." updated to banned";
 			$requestupdated = 1;
@@ -284,10 +280,9 @@ if(isset($_GET["func"])){
 	$output["requestsupdated"] = $requestupdated;
 
 }elseif(!isset($_GET["func"])){
-	if(!empty($_GET["oldid"])){
+	$oldid = 0;
+	if(isset($_GET["oldid"])){
 		$oldid = $_GET["oldid"];
-	}else{
-		$oldid = 0;
 	}
 
 	if(isset($_GET["broadcaster"]) && !empty($_GET["broadcaster"])){
