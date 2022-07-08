@@ -192,7 +192,7 @@ function clean_filename(string $filename){
 	// Replaces all spaces with underscores. 
     $filename = str_replace(' ', '_', $filename); 
     // Removes special chars. 
-    $filename = preg_replace('/[^A-Za-z0-9]/', '', $filename); 
+    $filename = preg_replace('/[^A-Za-z0-9\_]/', '', $filename); 
     // Replaces multiple underscores with single one. 
     $filename = preg_replace('/_+/', '_', $filename);
 	
