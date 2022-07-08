@@ -1,7 +1,10 @@
 $.urlParam = function(name){
     var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
     if (results==null) {
-       return "";
+        results = new RegExp('[\?&]' + name + '([^&#]*)').exec(window.location.href);
+        if (results==null) {
+            return "";
+        }
     }
     return decodeURI(results[1]) || 0;
 }
@@ -61,7 +64,8 @@ function new_request(array){
     <span id="request_${request_id}_time" style="display:none;">${request_time}</span>\n
     </div>
     `;
-    if ($.urlParam('admin') != undefined){
+    console.log("admin= "+$.urlParam('admin'));
+    if ($.urlParam('admin') === 0){
         data = data + `<div class=\"admindiv\" id=\"requestadmin_${request_id}\">
         <button class=\"adminbuttons\" style=\"margin-left:4vw; background-color:rgb(0, 128, 0);\" type=\"button\" onclick=\"MarkCompleted(${request_id})\">Mark Complete</button>\n
         <button class=\"adminbuttons\" style=\"background-color:rgb(153, 153, 0);\" type=\"button\" onclick=\"MarkSkipped(${request_id})\">Mark Skipped</button>
