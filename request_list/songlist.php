@@ -83,7 +83,7 @@ $conn->set_charset("utf8mb4");
 
 function escape_string($str){
 	global $conn;
-	$str = htmlspecialchars($str);
+	//$str = htmlspecialchars($str);
 	$str = mysqli_real_escape_string($conn, $str);
 return $str;	
 }
