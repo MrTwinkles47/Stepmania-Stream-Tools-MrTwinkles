@@ -26,11 +26,11 @@ if(strcasecmp($_SERVER['REQUEST_METHOD'], 'POST') != 0){
 if(isset($_SERVER['HTTP_KEY'])){
 	$keyToken = trim($_SERVER['HTTP_KEY']);
 	if(empty($keyToken)){
-		die("Fuck off" . PHP_EOL);
+		die("Error: No secrity key from client! Check your config.php." . PHP_EOL);
 	}
 	$keyToken = base64_decode($keyToken);
 	if($keyToken != $security_key){
-		die("Fuck off" . PHP_EOL);
+		die("Error: Incorrect security key: \"$keyToken\"! Check your config.php." . PHP_EOL);
 	}
 }else{
 	die("No valid HTTP security_key header" . PHP_EOL);
