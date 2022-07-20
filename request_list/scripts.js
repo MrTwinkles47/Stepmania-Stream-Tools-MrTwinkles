@@ -99,6 +99,8 @@ function completion(id){
 		}else{
             console.log("Completing request "+request_id);
             //$("#request_"+request_id).removeAttr("style");
+            $("#request_"+request_id).first().css("opacity", "");
+            $("#request_"+request_id).first().css("animation", "");
             $("#request_"+request_id).addClass("completed");
             $("#requestadmin_"+request_id).slideUp(600, function() {this.remove(); });
 			$("#request_"+request_id).append("<img src=\"images/check.png\" class=\"check\" />");
