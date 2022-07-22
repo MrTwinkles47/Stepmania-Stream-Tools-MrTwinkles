@@ -64,7 +64,7 @@ function new_request(array){
     <span id="request_${request_id}_time" style="display:none;">${request_time}</span>\n
     </div>
     `;
-    console.log("admin= "+$.urlParam('admin'));
+
     if ($.urlParam('admin') === 0){
         data = data + `<div class=\"admindiv\" id=\"requestadmin_${request_id}\">
         <button class=\"adminbuttons\" style=\"margin-left:4vw; background-color:rgb(0, 128, 0);\" type=\"button\" onclick=\"MarkCompleted(${request_id})\">Mark Complete</button>\n

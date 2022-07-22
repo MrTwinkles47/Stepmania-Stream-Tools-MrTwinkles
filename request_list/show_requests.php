@@ -1,6 +1,7 @@
 <?php
 
 require_once ('config.php');
+require_once ('misc_functions.php');
 
 if(!isset($_GET["security_key"]) || $_GET["security_key"] != $security_key || empty($_GET["security_key"])){
     die("Fuck off");
@@ -129,6 +130,11 @@ echo '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min
 		$request_type = strtolower($row["request_type"]);
 		$stepstype = strtolower($row["stepstype"]);
 		$difficulty = strtolower($row["difficulty"]);
+
+		//replace subtitle field with artist field if there is a duplicate title with different artists
+		if(!empty($artist = get_duplicate_song_artist($row["song_id"]))){
+			$subtitle = $artist;
+		}
 
 		$pack_img = strtolower(clean_filename($row["pack"]));
 		$pack_img = glob("images/packs/".$pack_img.".{jpg,JPG,jpeg,JPEG,png,PNG,gif,GIF,bmp,BMP}", GLOB_BRACE);

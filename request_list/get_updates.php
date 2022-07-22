@@ -1,6 +1,7 @@
 <?php
 
 require_once ('config.php');
+require_once ('misc_functions.php');
 
 if(!isset($_GET["security_key"]) || $_GET["security_key"] != $security_key || empty($_GET["security_key"])){
     die("Fuck off");
@@ -105,6 +106,11 @@ function get_requests_since($id,$oldid,$broadcaster){
 
 	while($request = mysqli_fetch_assoc($retval)) {
 		
+		//replace subtitle field with artist field if there is a duplicate title with different artists
+		if(!empty($artist = get_duplicate_song_artist($request["song_id"]))){
+			$request["subtitle"] = $artist;
+		}
+
 		//format pack name and find pack banner
 		$pack_img = strtolower(clean_filename($request["pack"]));
 		$pack_img = glob("images/packs/".$pack_img.".{jpg,JPG,jpeg,JPEG,png,PNG,gif,GIF,bmp,BMP}", GLOB_BRACE);
