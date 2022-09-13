@@ -21,7 +21,8 @@ A tool for viewer song requests for live streaming StepMania 5 on Twitch
 * Random requests based on songs played and scores: !top, !random, !gitgud
 * Ability to ban songs from being requested or being included in random commands. 
 * On-stream session stats including recent scores, high score lists, and requestors.
-* Ability to whitelist or ban users from making requests.
+* Configurable (server-side) dynamic global and user cooldowns for requests.
+* Ability to whitelist users (bypass all cooldowns) or ban users from making requests.
 * Broadcaster can limit requests by steps-type and/or difficulty level.
 ---
 ## Limitations/Known Bugs
