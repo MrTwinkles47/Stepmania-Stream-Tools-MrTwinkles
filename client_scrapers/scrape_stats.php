@@ -4,8 +4,8 @@
 //SM5 Stats.xml scraper
 //Call this scraper each time the Stats.xml file(s) are modified.
 //The scraper will not run with out specifying at least one profile ID in config.php! 
-//You can run the scraper in auto-run mode, which will run the script each time a Stats.xml file changes.
-//To run in auto-run mode: add "-auto" as an argument.
+//Run this script in the background while you play. Each time the Stats.xml file changes,
+//SMR will recieve the data it needs to auto-complete requests.
 /////
 
 if (php_sapi_name() != "cli") {
