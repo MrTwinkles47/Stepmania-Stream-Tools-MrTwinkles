@@ -27,6 +27,7 @@ CREATE TABLE `sm_broadcaster` (
   `id` int(11) NOT NULL,
   `broadcaster` text DEFAULT NULL,
   `stepstype` text DEFAULT NULL,
+  `song_time` time DEFAULT NULL,
   `meter_min` varchar(11) DEFAULT NULL,
   `meter_max` varchar(11) DEFAULT NULL,
   `request_toggle` enum('ON','OFF') DEFAULT NULL,

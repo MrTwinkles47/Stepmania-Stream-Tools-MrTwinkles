@@ -19,7 +19,7 @@ function add_broadcaster($broadcaster){
     global $conn;
 
 	$sql = "INSERT INTO sm_broadcaster (broadcaster, request_toggle) VALUES (\"$broadcaster\", \"ON\")";
-	$retval = mysqli_query( $conn, $sql );
+	mysqli_query( $conn, $sql );
 	$the_id = mysqli_insert_id($conn);
 
 	return($the_id);
@@ -115,12 +115,12 @@ function limit_stepstype($broadcaster,$stepstype){
             if($stepstype == "-1"|| $stepstype == "disable" || $stepstype == "off" || $stepstype == "remove" || $stepstype == "stop"){
                 $response = "Removing steps-type limit.";
                 $sql = "UPDATE sm_broadcaster SET stepstype=\"\" WHERE id=\"$id\" LIMIT 1";
-                $retval = mysqli_query( $conn, $sql );
+                mysqli_query( $conn, $sql );
             }elseif($stepstype == "singles" || $stepstype == "doubles"){ 
                 $response = "Changing steps-type to $stepstype";
                 $stepstype = "dance-".substr($stepstype,0,-1);
                 $sql = "UPDATE sm_broadcaster SET stepstype=\"$stepstype\" WHERE id=\"$id\" LIMIT 1";
-                $retval = mysqli_query( $conn, $sql );
+                mysqli_query( $conn, $sql );
             }else{
                 $response = "Invalid steps-type. Useage: \"singles\", \"doubles\", or \"off\".";
             }  
@@ -156,11 +156,51 @@ function change_meter($broadcaster,$meter){
             if($meter == "-1" || $meter == "disable" || $meter == "off" || $meter == "remove" || $meter == "stop"){
                 $response = "Removing difficulty meter limit.";
                 $sql = "UPDATE sm_broadcaster SET meter_max=\"\" WHERE id=\"$id\" LIMIT 1";
-                $retval = mysqli_query( $conn, $sql );
+                mysqli_query( $conn, $sql );
             }elseif(is_numeric($meter)){
                 $response = "Changing max difficulty meter to $meter";
                 $sql = "UPDATE sm_broadcaster SET meter_max=\"$meter\" WHERE id=\"$id\" LIMIT 1";
-                $retval = mysqli_query( $conn, $sql );
+                mysqli_query( $conn, $sql );
+            }else{
+                $response = "Invalid or unknown song time. Give time in the format \"m:ss\".";
+            }
+        }            
+            echo "$response";
+    }
+
+}
+
+function limit_time($broadcaster,$time){
+
+    global $conn;
+
+    $sql0 = "SELECT * FROM sm_broadcaster WHERE broadcaster = \"$broadcaster\"";
+    $retval0 = mysqli_query( $conn, $sql0 );
+    $numrows = mysqli_num_rows($retval0);
+    if($numrows == 0){
+        //settings for this broadcaster are not in the db. Let's set up a blank profile
+        add_broadcaster($broadcaster);
+        $retval0 = mysqli_query( $conn, $sql0 );
+        $numrows = mysqli_num_rows($retval0); 
+    }
+
+    if($numrows == 1){
+        $row0 = mysqli_fetch_assoc($retval0);
+        $id = $row0["id"];
+        $time_db = $row0["song_time"];
+        if(empty($time) && empty($time_db)){
+            $response = "No song time limit present.";
+        }elseif(empty($time) && !empty($time_db)){
+            $response = "Song time currently limited to $time_db";
+        }elseif(!empty($time)){
+            if($time == "-1" || $time == "disable" || $time == "off" || $time == "remove" || $time == "stop"){
+                $response = "Removing song time limit.";
+                $sql = "UPDATE sm_broadcaster SET song_time=\"\" WHERE id=\"$id\" LIMIT 1";
+                mysqli_query( $conn, $sql );
+            }elseif(preg_match('/^([0-9]|0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]/',$time)){
+                $response = "Changing song time limit to $time";
+                $sql = "UPDATE sm_broadcaster SET song_time=\"$time\" WHERE id=\"$id\" LIMIT 1";
+                mysqli_query( $conn, $sql );
             }
         }            
             echo "$response";
@@ -189,6 +229,10 @@ if(isset($_GET["meter"])){
     change_meter($_GET["broadcaster"],$meter);
 }
 
+if(isset($_GET["time"])){
+    $time = trim(mysqli_real_escape_string($conn,$_GET["time"]));
+    limit_time($_GET["broadcaster"],$time);
+}
+
 mysqli_close($conn);
-die();
 ?>

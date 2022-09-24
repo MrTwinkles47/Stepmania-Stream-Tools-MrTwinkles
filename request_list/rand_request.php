@@ -191,6 +191,7 @@ $broadcasterLimits = get_broadcaster_limits($broadcaster);
 if(!empty($broadcasterLimits) && is_array($broadcasterLimits)){
 	$stepstype = $broadcasterLimits['stepstype'];
 	$meter = $broadcasterLimits['meter_max'];
+	$songTime = $broadcasterLimits['song_time'];
 //	if(empty($stepstype)){$stepstype = '%';}
 //	if(empty($meter)){$meter = '99999999999';}
 }
