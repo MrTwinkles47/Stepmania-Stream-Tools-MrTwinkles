@@ -3,3 +3,5 @@ test_files/*
 request_list/images/packs/*
 docker/persist/*
 client_scrapers/log
+client_scrapers/config.php
+request_list/config.php

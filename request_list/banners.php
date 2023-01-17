@@ -1,7 +1,7 @@
 <?php
 
-include ('config.php');
-include ('misc_functions.php');
+require_once ('config.php');
+require_once ('misc_functions.php');
 
 $fileSizeMax = 5242880; //5MB
 	
@@ -11,9 +11,21 @@ if(strcasecmp($_SERVER['REQUEST_METHOD'], 'POST') != 0){
     die("Request method must be POST!" . PHP_EOL);
 }
 
-if(!isset($_POST["security_key"]) || $_POST["security_key"] != $security_key || empty($_POST["security_key"])){
-    die("Fuck off");
+//Get access token/security key from http header
+if(isset($_SERVER['HTTP_KEY'])){
+	$keyToken = trim($_SERVER['HTTP_KEY']);
+	if(empty($keyToken)){
+		die("Fuck off" . PHP_EOL);
+	}
+	$keyToken = base64_decode($keyToken);
+	if($keyToken != $security_key){
+		die("Fuck off" . PHP_EOL);
+	}
+}else{
+	die("No valid HTTP security_key header" . PHP_EOL);
 }
+
+//if(!isset($_POST["security_key"]) || $_POST["security_key"] != $security_key || empty($_POST["security_key"])){die("Fuck off");}
 
 //get version of client
 if(isset($_POST['version'])){

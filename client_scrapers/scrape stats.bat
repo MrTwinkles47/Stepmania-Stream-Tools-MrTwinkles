@@ -2,7 +2,6 @@
 @echo off
 cd "C:\php"
 cls
-::you must add profile IDs and the optional "-auto" argument for this script to run
-::example:  php.exe "%~dp0scrape_stats.php" -auto 00000000
+::example:  php.exe "%~dp0scrape_stats.php"
 php.exe "%~dp0scrape_stats.php"
 pause

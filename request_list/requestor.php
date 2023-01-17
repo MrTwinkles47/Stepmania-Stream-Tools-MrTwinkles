@@ -1,13 +1,17 @@
 <?php
 
-include('config.php');
+require_once ('config.php');
 
 if(!isset($_GET["security_key"]) || $_GET["security_key"] != $security_key || empty($_GET["security_key"])){
         die("Fuck off");
-    }
+}
 
 if(!isset($_GET["banuser"]) && !isset($_GET["whitelist"])){
 	die();
+}
+
+if((isset($_GET["banuser"]) && empty($_GET["banuser"])) || (isset($_GET["whitelist"]) && empty($_GET["whitelist"]))){
+        die("No user specified!");
 }
 
 $conn = mysqli_connect(dbhost, dbuser, dbpass, db);
@@ -49,7 +53,7 @@ function toggle_ban($user){
 		}
 
 	        $sql = "UPDATE sm_requestors SET banned=\"$value\" WHERE id=\"$id\" LIMIT 1";
-        	$retval = mysqli_query( $conn, $sql );
+        	mysqli_query( $conn, $sql );
 
 		echo "$response";
 
@@ -81,7 +85,7 @@ function toggle_whitelist($user){
                 }
 
                 $sql = "UPDATE sm_requestors SET whitelisted=\"$value\" WHERE id=\"$id\" LIMIT 1";
-                $retval = mysqli_query( $conn, $sql );
+                mysqli_query( $conn, $sql );
 
                 echo "$response";
 
@@ -89,12 +93,34 @@ function toggle_whitelist($user){
 
 }
 
-if(isset($_GET["banuser"])){
-	toggle_ban(clean_user($_GET["banuser"]));
+//get user who sent the command
+if(!isset($_GET["user"])){
+	die("Error");
+}elseif(isset($_GET["user"])){
+        $user = mysqli_real_escape_string($conn,$_GET["user"]);
 }
 
-if(isset($_GET["whitelist"])){
-    toggle_whitelist(clean_user($_GET["whitelist"]));
+//special rules for broadcaster
+if(isset($_GET["broadcaster"]) && !empty($_GET["broadcaster"])){
+	$broadcaster = mysqli_real_escape_string($conn,$_GET["broadcaster"]);
+}
+
+if(isset($_GET["banuser"]) && !empty($_GET["banuser"])){
+        $banUser = clean_user($_GET["banuser"]);
+        if(strtolower($user) != strtolower($broadcaster) && $banUser == strtolower($broadcaster)){
+                die("{$user} -> You don't have that kind of power here!");
+        }
+	toggle_ban($banUser);
+        die();
+}
+
+if(isset($_GET["whitelist"]) && !empty($_GET["whitelist"])){
+        $whitelistUser = clean_user($_GET["whitelist"]);
+        if(strtolower($user) != strtolower($broadcaster) && $whitelistUser == strtolower($broadcaster)){
+                die("{$user} -> You don't have that kind of power here!");
+        }
+        toggle_whitelist($whitelistUser);
+        die();
 }
 
 mysqli_close($conn);

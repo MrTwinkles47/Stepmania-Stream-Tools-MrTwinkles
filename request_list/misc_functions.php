@@ -10,7 +10,6 @@ if(! $conn ) {die('Could not connect: ' . mysqli_error($conn));}
 $conn->set_charset("utf8mb4");
 
 function clean($string) {
-	global $conn;
     $string = iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", $string); //tranliterate
     $string = preg_replace('/ +/', '-', $string); // Replaces all spaces with hyphens.
     $string = preg_replace('/[^A-Za-z0-9\-]/', '', $string); // Removes special chars.
@@ -92,6 +91,14 @@ function check_cooldown($user){
     global $cooldownMultiplier;
     global $maxRequests;
 
+    //check config variables
+    if(empty($cooldownMultiplier) || !is_numeric($cooldownMultiplier)){
+        $cooldownMultiplier = 0.4;
+    }
+    if(empty($maxRequests) || !is_numeric($maxRequests)){
+        $maxRequests = 10;
+    }
+
     //check total length of requests, if over maxRequests, stop
     $length = check_length($maxRequests);
 
@@ -109,7 +116,7 @@ function check_cooldown($user){
     }
 }
 
-function requested_recently($song_id,$requestor,$whitelisted,$interval){
+function requested_recently($song_id,$requestor,$whitelisted,$interval = 1){
     global $conn;
     
     if(empty($interval) || !is_numeric($interval)){$interval = 1;}
@@ -121,7 +128,7 @@ function requested_recently($song_id,$requestor,$whitelisted,$interval){
 
 	if($row0["total"] > 0){
     //if(($row0["total"] > 0) && ($whitelisted != "true")){
-        die("$requestor That song has already been requested recently!");
+        die("$requestor => This song has already been requested recently!");
     }
 }
 
@@ -169,8 +176,14 @@ function get_broadcaster_limits($broadcaster){
     return $broadcaserLimits;
 }
 
-function check_request_toggle($broadcaster){
+function check_request_toggle($broadcaster,$user = NULL){
     global $conn;
+
+    if(strtolower($broadcaster) == strtolower($user)){
+		//requestor is broadcaster: bypass
+        return;
+    }
+
     $sql0 = "SELECT * FROM sm_broadcaster WHERE broadcaster LIKE '$broadcaster'";
     $retval0 = mysqli_query( $conn, $sql0 );
     $numrows = mysqli_num_rows($retval0);
@@ -404,7 +417,7 @@ function parseCommandArgs($argsStr,$user,$broadcaster){
         if(mysqli_num_rows($retval0) == 1){
             $row0 = mysqli_fetch_assoc($retval0);
             if($row0['stepstype'] != $result['stepstype'] && !empty($row0['stepstype'])){
-                die("$user The broadcaster has limited requests to \"".$row0['stepstype']."\".");
+                die("$user => The broadcaster has limited requests to \"".$row0['stepstype']."\".");
             }
         }
     }
@@ -428,15 +441,16 @@ function display_ModeDiff($commandArgs){
 }
 
 function wh_log($log_msg){
-    $log_filename = "log";
+    $log_filename = __DIR__."/log";
     if (!file_exists($log_filename)) 
     {
         // create directory/folder uploads.
-        mkdir($log_filename, 0777, true);
+        mkdir($log_filename, 0700, true);
     }
     $log_file_data = $log_filename.'/log_' . date('Y-m-d') . '.log';
+    $log_msg = rtrim($log_msg); //remove line endings
     // if you don't add `FILE_APPEND`, the file will be erased each time you add a log
-    file_put_contents($log_file_data, date("Y-m-d H:i:s") . " -- [" . strtouppper(basename(__FILE__)). "] : ". $log_msg . "\n", FILE_APPEND);
+    file_put_contents($log_file_data, date("Y-m-d H:i:s") . " -- [" . strtoupper(basename(__FILE__)). "] : ". $log_msg . PHP_EOL, FILE_APPEND);
 } 
 
 function check_version($versionClient){

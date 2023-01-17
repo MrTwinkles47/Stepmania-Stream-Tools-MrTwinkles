@@ -1,7 +1,7 @@
 <?php
 
-include('config.php');
-include('misc_functions.php');
+require_once ('config.php');
+require_once ('misc_functions.php');
 
 if(!isset($_GET["security_key"]) || $_GET["security_key"] != $security_key || empty($_GET["security_key"])){
     die("Fuck off");
@@ -9,6 +9,10 @@ if(!isset($_GET["security_key"]) || $_GET["security_key"] != $security_key || em
 
 if(!isset($_GET["song"]) && !isset($_GET["songid"]) && !isset($_GET["cancel"]) && !isset($_GET["skip"]) && !isset($_GET["complete"])){
 	die();
+}
+
+if(!isset($_GET["user"])){
+	die("Error");
 }
 
 function check_banned($song_id, $user){
@@ -26,12 +30,16 @@ function request_song($song_id, $requestor, $tier, $twitchid, $broadcaster, $com
 	
 	$userobj = check_user($twitchid, $requestor);
 
-	if($userobj["banned"] == "true"){
-        die();
-	}   
-	if($userobj["whitelisted"] != "true"){
-        check_cooldown($requestor);
+	if(strtolower($broadcaster) != strtolower($requestor)){
+		//requestor not broadcaster. broadcaster bypasses these checks
+		if($userobj["banned"] == "true"){
+			die();
+		}   
+		if($userobj["whitelisted"] != "true"){
+			check_cooldown($requestor);
 		}
+		requested_recently($song_id,$requestor,$userobj["whitelisted"]);
+	}
 	
 	check_banned($song_id, $requestor);
 
@@ -50,11 +58,9 @@ function request_song($song_id, $requestor, $tier, $twitchid, $broadcaster, $com
 
 	$stepstype = $commandArgs['stepstype'];
 	$difficulty = $commandArgs['difficulty'];
-
-	requested_recently($song_id,$requestor,$userobj["whitelisted"],1);
 	
 	$sql = "INSERT INTO sm_requests (song_id, request_time, requestor, twitch_tier, broadcaster, request_type, stepstype, difficulty) VALUES ('{$song_id}', NOW(), '{$requestor}', '{$tier}', '{$broadcaster}', 'normal', '{$stepstype}', '{$difficulty}')";
-	$retval = mysqli_query( $conn, $sql );
+	mysqli_query( $conn, $sql );
 }
 
 $conn = mysqli_connect(dbhost, dbuser, dbpass, db);
@@ -63,18 +69,17 @@ $conn->set_charset("utf8mb4");
 
 //check if the active channel category/game is StepMania, etc.
 if(isset($_GET["game"]) && !empty($_GET["game"])){
-	$game = $_GET["game"];
+	$game = mysqli_real_escape_string($conn,$_GET["game"]);
     if(in_array(strtolower($game),array_map('strtolower',$categoryGame)) == FALSE){
         die("Hmmm...I don't think it's possible to request songs in ".$game.".");
     }
 }
 
-$user = $_GET["user"];
-$tier = $_GET["tier"];
+$user = mysqli_real_escape_string($conn,$_GET["user"]);
+$tier = mysqli_real_escape_string($conn,$_GET["tier"]);
+$twitchid = 0;
 if(isset($_GET["userid"])){
-	$twitchid = $_GET["userid"];
-}else{
-	$twitchid = 0;
+	$twitchid = mysqli_real_escape_string($conn,$_GET["userid"]);
 }
 
 //if(empty($_GET["song"]) || empty($_GET["songid"])){
@@ -86,14 +91,12 @@ if(isset($_GET["broadcaster"]) && !empty($_GET["broadcaster"])){
 	$broadcaster = $_GET["broadcaster"];
 	$broadcasterQuery = $broadcaster;
 	if (isset($_GET["song"]) || isset($_GET["songid"])){
-		check_request_toggle($broadcaster);
+		check_request_toggle($broadcaster, $user);
 	}
 }else{
 	$broadcaster = "";
 	$broadcasterQuery = "%";
 }
-
-$userobj = check_user($twitchid, $user);
 
 if(isset($_GET["cancel"])){
 	
@@ -194,22 +197,28 @@ if(isset($_GET["songid"]) && !empty($_GET["songid"])){
 		die();
 	}
 
+	//clean up song ID
 	$song = clean($commandArgs["song"]);
+	$song = preg_replace('/\D/','',$song);
+	if(!is_numeric($song) || empty($song)){
+		echo "$user gave an invalid song ID!";
+		die();
+	}
         //lookup by ID and request it
 
-        $sql = "SELECT * FROM sm_songs WHERE id = '{$song}' AND installed=1 ORDER BY title ASC";
+        $sql = "SELECT * FROM sm_songs WHERE id = '{$song}' AND installed=1 ORDER BY title ASC, pack ASC";
         $retval = mysqli_query( $conn, $sql );
 
 	if (mysqli_num_rows($retval) == 1) {
     		while($row = mysqli_fetch_assoc($retval)) {
-        		request_song($song, $user, $tier, $twitchid, $broadcaster, $commandArgs);
+        		request_song($row["id"], $user, $tier, $twitchid, $broadcaster, $commandArgs);
 				$displayModeDiff = display_ModeDiff($commandArgs);
 				$displayArtist = get_duplicate_song_artist ($row["id"]);
         		echo "$user requested " . trim($row["title"]." ".$row["subtitle"]). $displayArtist . " from " . $row["pack"].$displayModeDiff;
         		die();
     		}
 	} else {
-        	echo "Didn't find any songs matching the id: " . $song . "!";
+        	echo "$user => Didn't find any songs matching the ID: " . $song . "!";
         	die();
 }
 
@@ -239,7 +248,8 @@ if(isset($_GET["song"]) && !empty($_GET["song"])){
 		while($row = mysqli_fetch_assoc($retval)) {
         	request_song($row["id"], $user, $tier, $twitchid, $broadcaster, $commandArgs);
 			$displayModeDiff = display_ModeDiff($commandArgs);
-        	echo "$user requested " . trim($row["title"]." ".$row["subtitle"]). " from " . $row["pack"].$displayModeDiff;;
+			$displayArtist = get_duplicate_song_artist ($row["id"]);
+        	echo "$user requested " . trim($row["title"]." ".$row["subtitle"]). $displayArtist . " from " . $row["pack"].$displayModeDiff;;
     	}
 	die();
 	//end exact match
@@ -256,7 +266,8 @@ if(isset($_GET["song"]) && !empty($_GET["song"])){
     	while($row = mysqli_fetch_assoc($retval)) {
 			request_song($row["id"], $user, $tier, $twitchid, $broadcaster, $commandArgs);
 			$displayModeDiff = display_ModeDiff($commandArgs);
-        	echo "$user requested " . trim($row["title"]." ".$row["subtitle"]). " from " . $row["pack"].$displayModeDiff;;
+			$displayArtist = get_duplicate_song_artist ($row["id"]);
+        	echo "$user requested " . trim($row["title"]." ".$row["subtitle"]). $displayArtist . " from " . $row["pack"].$displayModeDiff;;
     	}
 	die();
 	//end one match
@@ -272,9 +283,9 @@ if(isset($_GET["song"]) && !empty($_GET["song"])){
 			$i++;
     	}
 	} elseif (is_numeric($song)) {
-		echo "Did you mean to use !requestid ".$song."?";
+		echo "$user => Did you mean to use !requestid ".$song."?";
 	}else{
-		echo "Didn't find any songs matching that name! Check the !songlist.";
+		echo "$user => Didn't find any songs matching that name! Check the !songlist.";
 	}
 
 	die();

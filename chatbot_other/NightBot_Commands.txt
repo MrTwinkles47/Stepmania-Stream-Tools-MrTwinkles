@@ -42,6 +42,10 @@ Command:    !randomfearmix
 User Level: everyone
 Response:   $(urlfetch https://[URL]/rand_request.php?security_key=[KEY]&broadcaster=$(channel)&user=$(twitch $(user) "{{displayName}}")&userid=$(userid)&tier=$(userlevel)&game=$(twitch $(channel) "{{game}}")&type=fearmix&random=FEARMIX&song=$(querystring))
 
+Command:    !randomcafecursed
+User Level: everyone
+Response:  $(urlfetch https://[URL]/rand_request.php?security_key=[KEY]&broadcaster=$(channel)&user=$(twitch $(user) "{{displayName}}")&userid=$(userid)&tier=$(userlevel)&game=$(twitch $(channel) "{{game}}")&type=cafe&random=Cafe+Cursed&song=$(queryescape))
+
 Command:    !banuser
 User Level: moderator
 Response:   $(urlfetch https://[URL]/requestor.php?security_key=[KEY]&broadcaster=$(channel)&game=$(twitch $(channel) "{{game}}")&banuser=$(querystring))
@@ -64,7 +68,7 @@ Response:   $(urlfetch https://[URL]/rand_request.php?security_key=[KEY]&broadca
 
 Command:    !randomunplayed
 User Level: everyone
-Response:  ${urlfetch https://[URL].smrequests.com/rand_request.php?security_key=[KEY]&broadcaster=$(channel)&user=$(twitch $(user) "{{displayName}}")&userid=$(userid)&tier=$(userlevel)&game=$(twitch $(channel) "{{game}}")&random=unplayed&song=$(querystring))
+Response:  $(urlfetch https://[URL].smrequests.com/rand_request.php?security_key=[KEY]&broadcaster=$(channel)&user=$(twitch $(user) "{{displayName}}")&userid=$(userid)&tier=$(userlevel)&game=$(twitch $(channel) "{{game}}")&random=unplayed&song=$(querystring))
 
 Command:    !songlist
 User Level: everyone

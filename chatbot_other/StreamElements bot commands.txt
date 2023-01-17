@@ -42,6 +42,10 @@ Command:    !randomfearmix
 User Level: everyone
 Response:  ${urlfetch https://[URL]/rand_request.php?security_key=[KEY]&broadcaster=${channel}&user=${user}&tier=${user.level}&game=${game}&type=fearmix&random=FEARMIX&song=${queryescape ${1:|0}}}
 
+Command:    !randomcafecursed
+User Level: everyone
+Response:  ${urlfetch https://[URL]/rand_request.php?security_key=[KEY]&broadcaster=${channel}&user=${user}&tier=${user.level}&game=${game}&type=cafe&random=Cafe+Cursed&song=${queryescape ${1:|0}}}
+
 Command:    !banuser
 User Level: moderator
 Response:  ${urlfetch https://[URL]/requestor.php?security_key=[KEY]&broadcaster=${channel}&game=${game}&banuser=${queryescape ${1:}}}
@@ -64,7 +68,7 @@ Response:  ${urlfetch https://[URL]/rand_request.php?security_key=[KEY]&broadcas
 
 Command:    !randomunplayed
 User Level: everyone
-Response:  ${urlfetch https://[URL].smrequests.com/rand_request.php?security_key=[KEY]&broadcaster=${channel}&user=${user}&tier=${user.level}&game=${game}&random=unplayed&song=${queryescape ${1:|0}}}
+Response:  ${urlfetch https://[URL]/rand_request.php?security_key=[KEY]&broadcaster=${channel}&user=${user}&tier=${user.level}&game=${game}&random=unplayed&song=${queryescape ${1:|0}}}
 
 Command:    !songlist
 User Level: everyone

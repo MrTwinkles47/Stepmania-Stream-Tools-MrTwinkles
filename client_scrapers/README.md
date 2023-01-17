@@ -12,10 +12,17 @@ This script finds the first image file in each pack folder, formats the name to 
 
 ## Scrape Stats
 
-The stats scraper is responsible for grabbing all your highscores and recently played songs from your Stats.xml file(s). An "-auto" argument can be added to the run command to automatically run when the Stats.xml is updated (usually at the song evaluation screen). You must specify with profiles to scrape by profile ID number.
+The stats scraper is responsible for automatically grabbing all your highscores and recently played songs from your Stats.xml file(s) (usually at the song evaluation screen). The data is used to automatically complete open song requests and provide information for random commands (top, gitgud, etc.). Configure the active local profile(s) or USB profile(s) in your config.php file.
+
+# Usage (first-run)
+* Start StepMania and allow it to build its song cache files
+* Run "scrape songs.bat"
+    * A note on deleting songs or song packs/groups: StepMania does not automatically remove the associated cache files after a song is deleted. Make sure you delete the song's cache file before running the scraper. I recommend disabling 'Fast Load' in StepMania's settings.
+* Run "scrape stats.bat" to upload your profile's high scores and songs played records to the DB. Once the script says "Done.", you may close it.
+* Run "upload banners.bat" to upload your pack/group banners to the server to later be used as song background images on the request board.
 
 # Usage
-* Run "scrape new songs.bat" when you add new songs to StepMania (and allowed StepMania to build new cache files).
-    * A note on deleting songs or song packs/groups: StepMania does not automatically remove the associated cache files after a song is deleted. Make sure you delete the song's cache file before running the scrape so that the scraper can remove the song from the sm_songs table.
-* Run "scrape stats.bat" everytime you stream to populate your sm_songsplayed and sm_scores DB tables. This script is also responsible for completing/marking-off requests on the request board.
-* Run "upload banners.bat" to upload new pack/group banners to the server to later be used as song background images on the request board.
+* When you add or remove songs/packs from StepMania:
+    * Run the "scrape songs.bat" again to update the online songlist  
+    * Run "upload banners.bat" to upload new pack/group banners
+* Run "scrape stats.bat" everytime you stream. This script is also responsible for completing/marking-off requests on the request board.

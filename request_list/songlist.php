@@ -74,7 +74,7 @@ $(document).ready(function(){
 
 //
 
-require('config.php');
+require_once ('config.php');
 
 //create connection
 $conn = mysqli_connect(dbhost, dbuser, dbpass, db);
@@ -141,8 +141,6 @@ $offset = ($pageno-1) * $no_of_records_per_page;
 //was the random button clicked?		
 if(isset($_GET['random'])){
 	$order = "RAND()";
-}else{
-	$order = $order;
 }
 
 //get total songs and packs
@@ -719,3 +717,4 @@ SMRequests is a song request and hosted songlist tool for live streaming StepMan
 
 </html>
 </body>
+<?php die(); ?>

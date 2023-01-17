@@ -1,6 +1,6 @@
 <?php
 
-require ('config.php');
+require_once ('config.php');
 
 if(!isset($_GET["security_key"]) || $_GET["security_key"] != $security_key || empty($_GET["security_key"])){
     die("Fuck off");
@@ -57,8 +57,12 @@ echo '<html>
 ';
 
 }
-
-	if(empty($requestWidgetLength) || !is_numeric($requestWidgetLength) || $requestWidgetLength > 50){
+	//parse url parameter for request board length
+	if ( isset($_GET['length']) && !empty($_GET['length']) && is_numeric($_GET['length'])) {
+		//is valid number
+		$requestWidgetLength = $_GET['length'];
+	}else{
+		//not valid number, use default
 		$requestWidgetLength = 10;
 	}
 
@@ -82,7 +86,7 @@ echo '<html>
 		$difficulty = strtolower($row["difficulty"]);
 
 		$pack_img = strtolower(preg_replace('/\s+/', '_', trim($row["pack"])));
-		$pack_img = glob("images/packs/".$pack_img.".{jpg,jpeg,png,gif}", GLOB_BRACE);
+		$pack_img = glob("images/packs/".$pack_img.".{jpg,JPG,jpeg,JPEG,png,PNG,gif,GIF,bmp,BMP}", GLOB_BRACE);
 		if (!$pack_img){
 			$pack_img = "images/packs/unknown.png";
 		}else{
@@ -90,7 +94,7 @@ echo '<html>
 		}
 
 		if($request_type != "normal"){
-			$request_img = glob("images/".$request_type.".{png,gif}", GLOB_BRACE);
+			$request_img = glob("images/".$request_type.".{png,PNG,gif,GIF}", GLOB_BRACE);
 			if (!$request_img){
 				$request_img = "images/random.png";
 			}else{

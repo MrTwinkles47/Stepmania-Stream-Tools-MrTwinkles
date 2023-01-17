@@ -1,7 +1,7 @@
 <?php
 
-require('config.php');
-include('misc_functions.php');
+require_once ('config.php');
+require_once ('misc_functions.php');
 
 if(!isset($_GET["security_key"]) || $_GET["security_key"] != $security_key || empty($_GET["security_key"])){
     die("Fuck off");
@@ -144,6 +144,6 @@ if(isset($_GET["bansong"])){
 die();
 }
 
-mysqli_close();
+mysqli_close($conn);
 
 ?>

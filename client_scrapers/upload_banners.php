@@ -1,22 +1,43 @@
 <?php
 
-if (php_sapi_name() == "cli") {
-    // In cli-mode
-} else {
+//
+//PHP StepMania song pack banner uploader
+//This script finds each banner image for each song group/pack and uploads it via POST to the server
+//'file_uploads' must be enabled on the server for this script to work correctly
+//
+
+if (php_sapi_name() != "cli") {
 	// Not in cli-mode
-	if (!isset($_GET['security_key']) || $_GET['security_key'] != $security_key || empty($_GET['security_key'])){die("Fuck off");}
-	$security_key = $GET['security_key'];
+	die("Only support cli mode.");
 }
+// In cli-mode
+$versionClient = get_version();
+cli_set_process_title("SMRequests v$versionClient | StepMania Song Pack Banner Uploader");
+
+//Welcome message
+echo "  ____  __  __ ____                            _       " . PHP_EOL;
+echo " / ___||  \/  |  _ \ ___  __ _ _   _  ___  ___| |_ ___ " . PHP_EOL;
+echo " \___ \| |\/| | |_) / _ \/ _\`| | | |/ _ \/ __| __/ __|" . PHP_EOL;
+echo "  ___) | |  | |  _ <  __/ (_| | |_| |  __/\__ \ |_\__ \\" . PHP_EOL;
+echo " |____/|_|  |_|_| \_\___|\__, |\__,_|\___||___/\__|___/" . PHP_EOL;
+echo "                            |_|                        " . PHP_EOL;
+echo "" . PHP_EOL;
+echo "Version: $versionClient";
+echo "" . PHP_EOL;
+echo "StepMania Song Pack Banner Uploader" . PHP_EOL;
+echo "*********************************************************" . PHP_EOL;
+echo "" . PHP_EOL;
+
+//start logging and cleanup old logs
+wh_log("Starting SMRequests v$versionClient Song Pack Banner Uploader...");
+//
 
 if(file_exists(__DIR__."/config.php") && is_file(__DIR__."/config.php")){
-	require ('config.php');
+	require_once ('config.php');
 }else{
 	wh_log("config.php file not found! You must configure these scripts before running. You can find an example config.php file at config.example.php.");
 	die("config.php file not found! You must configure these scripts before running. You can find an example config.php file at config.example.php.".PHP_EOL);
 }
-
-$banners_copied = $notFoundBanners = $cPacks = 0;
-$fileSizeMax = 5242880; //5MB
 
 function check_environment(){
 	//check for a php.ini file
@@ -26,17 +47,22 @@ function check_environment(){
 		//no config found
 		wh_log("ERROR: A php.ini configuration file was not found. Refer to the documentation on how to configure your php envirnment for SMRequests.");
 		die("A php.ini configuration file was not found. Refer to the documentation on how to configure your php envirnment for SMRequests." . PHP_EOL);
-	}else{
-		//config found. check for enabled extensions
-		$expectedExts = array('curl','json','mbstring','SimpleXML');
-		$loadedPhpExt = get_loaded_extensions();
+	}
+	//config found. check for enabled extensions
+	$expectedExts = array('curl','json','mbstring','SimpleXML');
+	$loadedPhpExt = get_loaded_extensions();
+	$missingExt = array();
 
-		foreach ($expectedExts as $ext){
-			if(!in_array($ext,$loadedPhpExt)){
-				wh_log("ERROR: $ext extension not enabled. Please enable the extension in your config file: \"$iniPath\"");
-				die("$ext extension not enabled. Please enable the extension in your config file: \"$iniPath\"" . PHP_EOL);
-			}
+	foreach ($expectedExts as $ext){
+		if(!in_array($ext,$loadedPhpExt)){
+			//expected extenstion not found
+			$missingExt[] = $ext;
 		}
+	}
+	if(count($missingExt) > 0){
+		$ext = implode(', ',$missingExt);
+		wh_log("ERROR: $ext extension(s) not enabled. Please enable the extension(s) in your PHP config file: \"$iniPath\"");
+		die("$ext extension(s) not enabled. Please enable the extension(s) in your PHP config file: \"$iniPath\"" . PHP_EOL);
 	}
 }
 
@@ -73,40 +99,30 @@ function get_version(){
 	return $versionClient;
 }
 
-function additionalSongsFolders($saveDir){
-	global $offlineMode;
-	
-	//read StepMania 5.x Preferences.ini file and extract the "AdditionalSongFolders" to an array
-	$prefFile = $saveDir."/Preferences.ini";
-	$addSongDirs = array();
+function check_target_url(){
+	global $targetURL;
+	global $target_url;
 
-	//if offline mode is set, always return empty
-	if($offlineMode){
-		return $addSongDirs;
+	if(isset($target_url) && !empty($target_url)){
+		$targetURL = $target_url;
 	}
-
-	if(file_exists($prefFile)){
-		$lines = file($prefFile);
-		foreach ($lines as $line){
-			$addSongFolder = substr(strstr($line,"AdditionalSongFolders="),22);
-			if(strlen($addSongFolder) > 1){
-				//file exists, line is in file, and line contains at least 1 directory
-				//directories are delimited by ","
-				$addSongDirs = array_map('trim',explode(',',$addSongFolder));
-			break;
-			}
+	if(!isset($targetURL) || empty($targetURL)){
+		die("No target URL found! Check the \"targetURL\" value in your config.php file" . PHP_EOL);
+	}elseif(filter_var($targetURL,FILTER_VALIDATE_URL) === FALSE){
+		die("\"$targetURL\" is not a valid URL. Check the \"targetURL\" value in your config.php file" . PHP_EOL);
+	}elseif(preg_match('/(smrequests\.)(com|dev)/',$targetURL)){
+		//this is a hosted domain
+		if(!preg_match('/(https:\/\/.+\.smrequests\.)(com|dev)(?!\/)/',$targetURL)){
+			die("\"$targetURL\" is not a valid URL for the SMRequests hosted service. Check the \"targetURL\" value in your config.php file" . PHP_EOL);
 		}
-		wh_log("Preferences.ini file loaded. Adding directories: " . implode(',',$addSongDirs));
-	}else{
-		wh_log("Preferences.ini file not found!");
 	}
-	return $addSongDirs;
 }
 
 function findFiles($directory) {
+	//find all directories in a directory and sort by modified time
     $dir_paths = array ();
 	foreach(glob("{$directory}/*", GLOB_ONLYDIR) as $filename) {
-            $dir_paths[] = $filename;
+        $dir_paths[] = $filename;
 	}
 	usort( $dir_paths, function( $a, $b ) { return filemtime($b) - filemtime($a); } );
     return $dir_paths;
@@ -131,20 +147,21 @@ function isIgnoredPack($pack){
 }
 
 function get_banner($img_path){
-	
+	//look for banners, reject known not banners
 	foreach($img_path as $img){
-		if(stripos(pathinfo($img,PATHINFO_FILENAME),'banner') !== FALSE){
+		$filename = pathinfo($img,PATHINFO_FILENAME);
+		if(stripos($filename,'banner') !== FALSE){
 			$return = $img;
 			break;
-		}elseif(stripos(pathinfo($img,PATHINFO_FILENAME),'ban') !== FALSE){
+		}elseif(stripos($filename,'bn') !== FALSE){
 			$return = $img;
 			break;
-		}elseif(stripos(pathinfo($img,PATHINFO_FILENAME),'bn') !== FALSE){
+		}elseif(stripos($filename,'ban') !== FALSE){
 			$return = $img;
 			break;
-		}elseif(stripos(pathinfo($img,PATHINFO_FILENAME),'jacket') !== FALSE){
+		}elseif(stripos($filename,'jacket') !== FALSE){
 			continue;
-		}elseif(stripos(pathinfo($img,PATHINFO_FILENAME),'cdtitle') !== FALSE){
+		}elseif(stripos($filename,'cdtitle') !== FALSE){
 			continue;
 		}else{
 			$return = $img;
@@ -155,12 +172,12 @@ function get_banner($img_path){
 
 function does_banner_exist($file,$pack_name){
 	//quick check to see if the banner is on the server
-	global $target_url;
+	global $targetURL;
 	$return = FALSE;
 	unset($ch);
 
 	$imgName = urlencode($pack_name.'.'.strtolower(pathinfo($file,PATHINFO_EXTENSION)));
-	$ch = curl_init($target_url."/images/packs/".$imgName);
+	$ch = curl_init($targetURL."/images/packs/".$imgName);
 	curl_setopt($ch, CURLOPT_NOBODY, TRUE);
 	curl_exec($ch);
 	$retcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -170,29 +187,34 @@ function does_banner_exist($file,$pack_name){
 }
 
 function curl_upload($file,$pack_name){
-	global $target_url;
+	global $targetURL;
 	global $security_key;
 	unset($ch,$post,$cFile);
 	$versionClient = get_version();
+	//add the security_key to the http header
+	if(!isset($security_key) || empty($security_key)){
+		die("No security_key found! Check the \"security_key\" value in your config.php file" . PHP_EOL);
+	}
+	$security_keyToken = base64_encode($security_key);
 	//special curl function to create the information needed to upload files
 	//renaming the banner images to be consistent with the pack name
 	$cFile = curl_file_create($file,'',$pack_name.'.'.strtolower(pathinfo($file,PATHINFO_EXTENSION)));
 	//add the security_key to the array
-	$post = array('security_key' => $security_key, 'version' => $versionClient,'file_contents'=> $cFile);
+	$post = array('version' => $versionClient, 'file_contents'=> $cFile);
 	//this curl method only works with PHP 5.5+
 	$ch = curl_init();
-	curl_setopt($ch, CURLOPT_URL,$target_url."/banners.php");
+	curl_setopt($ch, CURLOPT_URL,$targetURL."/banners.php");
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($ch, CURLOPT_HTTPHEADER, array("Key: $security_keyToken"));
 	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); //if true, must specify cacert.pem location in php.ini
-	curl_setopt($ch, CURLOPT_SAFE_UPLOAD, true);
 	curl_setopt($ch, CURLOPT_ENCODING,'gzip,deflate');
 	curl_setopt($ch, CURLOPT_POST,1); 
 	curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
 	curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
 	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 	$result = curl_exec ($ch);
-	if(curl_exec($ch) === FALSE){
-		echo 'Curl error: '. curl_error($ch) . PHP_EOL;
+	if($result === FALSE){
+		echo "Curl error: ".curl_error($ch) . PHP_EOL;
 		wh_log("Curl error: ".curl_error($ch));
 	}
 	if(curl_getinfo($ch, CURLINFO_HTTP_CODE) < 400){
@@ -202,7 +224,7 @@ function curl_upload($file,$pack_name){
 		$return = 0;
 	}else{
 		//some kind of error
-		echo "There was an error communicating with $target_url." . PHP_EOL;
+		echo "There was an error communicating with $targetURL." . PHP_EOL;
 		wh_log("The server responded with error: " . curl_getinfo($ch, CURLINFO_HTTP_CODE));
 		echo "The server responded with error: " . curl_getinfo($ch, CURLINFO_HTTP_CODE) . PHP_EOL;
 		$return = 1;
@@ -214,25 +236,34 @@ function curl_upload($file,$pack_name){
 //check php environment
 check_environment();
 
+//check for valid target URL
+check_target_url();
+
 echo "Finding and uploading pack banner images..." . PHP_EOL;
+
+//ready variables
+$banners_copied = $notFoundBanners = $cPacks = 0;
+$fileSizeMax = 5242880; //5MB
 
 // find all the pack/group folders
 $pack_dir = findFiles($songsDir);
+
 //add any additional songs folder(s)
-//foreach (additionalSongsFolders($saveDir) as $addPack){
-//	$pack_dir[] = $addPack;
-//}
-if(is_array($addSongsDir) && !empty($addSongsDir)){
+if(!empty($addSongsDir)){
+	if(!is_array($addSongsDir)){
+		$addSongsDir = array($addSongsDir);
+	}
 	foreach($addSongsDir as $directory){
 		$pack_dir[] = findFiles($directory);
 	}
-}elseif(!empty($addSongsDir)){
-	$pack_dir[] = findFiles($addSongsDir);
 }
 
 $cPacks = count($pack_dir);
 
-if ($cPacks == 0){wh_log("No pack/group folders found. Your StepMania /Songs directory may be located in \"AppData\""); die ("No pack/group folders found. Your StepMania /Songs directory may be located in \"AppData\"" . PHP_EOL);}
+if ($cPacks == 0){
+	wh_log("No pack/group folders found. Your StepMania /Songs directory may be located in \"AppData\""); 
+	die ("No pack/group folders found. Your StepMania /Songs directory may be located in \"AppData\"" . PHP_EOL);
+}
 
 $img_arr = array();
 
@@ -257,7 +288,6 @@ foreach ($pack_dir as $path){
 				//use the first result as the pack banner
 				$img_path = $img_path[0];
 			}
-			//echo $img_path.PHP_EOL;
 			//check for filesize
 			if (filesize($img_path) > $fileSizeMax){
 				echo $pack_name."'s image file is too large (max size: ". $fileSizeMax / 1024^2 ."MB)!" . PHP_EOL;
@@ -291,4 +321,5 @@ $cPacks = $cPacks - $notFoundBanners;
 echo "Uploaded ".$banners_copied." of ".$cPacks." banner images. Banners were not found for ".$notFoundBanners." packs." . PHP_EOL;
 wh_log("Uploaded ".$banners_copied." of ".$cPacks." banner images. Banners were not found for ".$notFoundBanners." packs.");
 
+exit();
 ?>
