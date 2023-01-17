@@ -78,4 +78,7 @@ $scoreType = "itg";
 //limit to how many random songs can be requested at once
 $max_num = 3;
 
+//Enable webhook check functionality 
+$enableWebHook = false;
+
 ?>
