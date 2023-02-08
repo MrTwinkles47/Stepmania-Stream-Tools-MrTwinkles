@@ -602,9 +602,9 @@ if($_GET["random"] == "theusual"){
 			JOIN 
 				(SELECT song_id, COUNT(song_id) AS idcount 
 				FROM sm_requests 
-				WHERE song_id>0 AND LOWER(requestor) LIKE LOWER('$user') AND state <> 'canceled' AND state <> 'skipped' 
+				WHERE song_id>0 AND LOWER(requestor) LIKE LOWER('$user') AND state <> 'canceled' AND state <> 'skipped' AND request_type = 'normal' 
 				GROUP BY song_id
-				HAVING idcount > 1  
+				HAVING idcount >= 3  
 				ORDER BY idcount DESC  
 				LIMIT 20) AS t2 
 			ON t2.song_id=sm_songs.id    
