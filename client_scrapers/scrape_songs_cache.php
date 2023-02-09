@@ -46,6 +46,7 @@ if(file_exists(__DIR__."/config.php") && is_file(__DIR__."/config.php")){
 // Code
 
 function check_environment(){
+	global $timezone;
 	//check for a php.ini file
 	$iniPath = php_ini_loaded_file();
 
@@ -54,6 +55,35 @@ function check_environment(){
 		wh_log("ERROR: A php.ini configuration file was not found. Refer to the documentation on how to configure your php envirnment for SMRequests.");
 		die("A php.ini configuration file was not found. Refer to the documentation on how to configure your php envirnment for SMRequests." . PHP_EOL);
 	}
+
+	//check php version and dump to log
+	switch(version_compare(PHP_VERSION,'7.4.26')){
+		case -1:
+			//version too low
+			wh_log("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " & PHP_VERSION & "");
+			die("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " & PHP_VERSION & "");
+			break;
+		case 1:
+			//version higher than test
+			if(version_compare(PHP_VERSION,'8.0.0','>=')){
+				//php8 is not supported....yet
+				wh_log("PHP 8 is not supported! Please install the latest version of PHP 7.4. Your version is: " & PHP_VERSION & "");
+				die("PHP 8 is not supported! Please install the latest version of PHP 7.4. Your version is: " & PHP_VERSION & "");
+			}
+			//full steam ahead!	
+			break;
+		default:
+			//versions match!
+	}
+
+	//set timezone
+	if($timezone){
+		if(!date_default_timezone_set($timezone)){
+			wh_log("Timezone not set in config.php or invalid.");
+			wh_log("Timezone set to: " & date_default_timezone_get() & ".");
+		}
+	}
+
 	//config found. check for enabled extensions
 	$expectedExts = array('curl','json','mbstring','SimpleXML');
 	$loadedPhpExt = get_loaded_extensions();
