@@ -427,29 +427,6 @@ if($_GET["random"] == "gitgud"){
 	$whereTypeDiffClause = build_whereclause($stepstype,$difficulty,"sm_scores");
 	$whereTypeDiffClauseSP = build_whereclause($stepstype,$difficulty,"sm_songsplayed");
 
-	//////OLD GITGUD QUERY:
-        // $sql = "SELECT sm_songs.id AS id,sm_songs.title AS title,sm_songs.subtitle AS subtitle,sm_songs.artist AS artist,sm_songs.pack AS pack,t2.percentdp,score,t2.stepstype,t2.difficulty,date,scores 
-		// 		FROM sm_songs 
-		// 		JOIN 
-		// 		(SELECT song_id,MAX(percentdp) AS percentdp,MAX(score) AS score,COUNT(song_id) as scores,stepstype,difficulty,DATE_FORMAT(MAX(datetime),'%Y/%c/%e') AS date  
-		// 			FROM sm_scores 
-		// 			WHERE EXISTS 
-		// 				(SELECT song_id,SUM(numplayed) AS numplayed   
-		// 				FROM sm_songsplayed 
-		// 				WHERE song_id>0 AND numplayed>1 AND username LIKE '{$profileName}' $whereTypeDiffClauseSP  
-		// 				GROUP BY song_id 
-		// 				ORDER BY numplayed DESC 
-		// 				LIMIT 100) 
-		// 			AND grade <> 'Failed' AND percentdp BETWEEN 0.50 AND 1.0 AND username LIKE '{$profileName}' $whereTypeDiffClause 
-		// 			GROUP BY song_id,stepstype,difficulty
-		// 			HAVING scores > 1  
-		// 			ORDER BY percentdp ASC, score ASC 
-		// 			LIMIT 25) AS t2 
-		// 		ON t2.song_id = sm_songs.id 
-		// 		WHERE banned NOT IN(1,2) AND installed = 1 
-		// 		ORDER BY RAND()";
-        // $retval = mysqli_query( $conn, $sql );
-
 	$topTotal = get_top_percent_played_songs($profileName,$whereTypeDiffClauseSP);
 	$averagePercentDP = get_average_percentDP($profileName,$whereTypeDiffClause);
 
@@ -514,8 +491,8 @@ if($_GET["random"] == "gitgud"){
 
 					$displayModeDiff = display_ModeDiff(array('stepstype' => $row['stepstype'],'difficulty' => $row['difficulty']));
 					$displayArtist = get_duplicate_song_artist ($row["song_id"]);
-					echo ("@$user dares you to beat ".$displayScore." at " . trim($row["title"]." ".$row["subtitle"]).$displayArtist. " from " . $row["pack"] . $displayModeDiff . " ");
-					wh_log("@$user requested $request_type (TopPercent: $topTotal, AveragePDP: $averagePercentDP): $displayScore at " . $row["song_id"] . " : " . trim($row["title"]." ".$row["subtitle"]).$displayArtist. " from " . $row["pack"] . $displayModeDiff);
+					echo ("@$user dares you to beat ".$displayScore." from ".date_format($row["datetime"],"Y/m/d")." at " . trim($row["title"]." ".$row["subtitle"]).$displayArtist. " from " . $row["pack"] . $displayModeDiff . " ");
+					//wh_log("@$user requested $request_type (TopPercent: $topTotal, AveragePDP: $averagePercentDP): $displayScore at " . $row["song_id"] . " : " . trim($row["title"]." ".$row["subtitle"]).$displayArtist. " from " . $row["pack"] . $displayModeDiff);
 					$i++;
 				}
 			}
