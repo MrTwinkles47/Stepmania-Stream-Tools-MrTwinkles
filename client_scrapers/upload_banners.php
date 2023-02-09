@@ -54,15 +54,15 @@ function check_environment(){
 	switch(version_compare(PHP_VERSION,'7.4.26')){
 		case -1:
 			//version too low
-			wh_log("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " & PHP_VERSION & "");
-			die("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " & PHP_VERSION & "");
+			wh_log("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
+			die("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
 			break;
 		case 1:
 			//version higher than test
 			if(version_compare(PHP_VERSION,'8.0.0','>=')){
 				//php8 is not supported....yet
-				wh_log("PHP 8 is not supported! Please install the latest version of PHP 7.4. Your version is: " & PHP_VERSION & "");
-				die("PHP 8 is not supported! Please install the latest version of PHP 7.4. Your version is: " & PHP_VERSION & "");
+				wh_log("PHP 8 is not supported! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
+				die("PHP 8 is not supported! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION );
 			}
 			//full steam ahead!	
 			break;
@@ -74,7 +74,7 @@ function check_environment(){
 	if($timezone){
 		if(!date_default_timezone_set($timezone)){
 			wh_log("Timezone not set in config.php or invalid.");
-			wh_log("Timezone set to: " & date_default_timezone_get() & ".");
+			wh_log("Timezone set to: " . date_default_timezone_get() . ".");
 		}
 	}
 
