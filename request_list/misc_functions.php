@@ -5,6 +5,16 @@
 
 //include("config.php");
 
+//-------Polyfill Function---------//
+
+// based on original work from the PHP Laravel framework
+if (!function_exists('str_contains')) {
+    function str_contains($haystack, $needle) {
+        return $needle !== '' && mb_strpos($haystack, $needle) !== false;
+    }
+}
+
+//---------SMR Functions---------// 
 $conn = mysqli_connect(dbhost, dbuser, dbpass, db);
 if(! $conn ) {die('Could not connect: ' . mysqli_error($conn));}
 $conn->set_charset("utf8mb4");
@@ -110,9 +120,9 @@ function check_cooldown($user){
     $retval0 = mysqli_query( $conn, $sql0 );
     $numrows = mysqli_num_rows($retval0);
     if($numrows > 0 && floor($interval) > 1){
-        die("Slow down there, part'ner! Try again in ".floor($interval)." minutes.");
+        die("@$user => Slow down there, part'ner! Try again in ".floor($interval)." minutes.");
     }elseif($numrows > 0 && floor($interval) <= 1){
-        die("Slow down there, part'ner! Try again in 1 minute.");
+        die("@$user => Slow down there, part'ner! Try again in 1 minute.");
     }
 }
 
@@ -251,7 +261,7 @@ function check_notedata($broadcaster,$song_id,$stepstype,$difficulty,$user){
     if(!empty($stepstype) && $stepstype != '%' && empty($difficulty)){
         $difficulty = '%';
     }elseif(empty($stepstype) && !empty($difficulty)){
-        die("$user didn't specify a stepstype!");
+        die("@$user didn't specify a stepstype!");
     }
 
     $sql = "SELECT * FROM sm_notedata WHERE song_id = '$song_id' AND stepstype LIKE '$stepstype' AND difficulty LIKE '$difficulty'";
@@ -353,7 +363,7 @@ function parseCommandArgs($argsStr,$user,$broadcaster){
                 $result['difficulty'] = "Edit";
             break;
             default:
-                die("$user gave an invalid 3-letter steps-type/difficulty.");
+                die("@$user gave an invalid 3-letter steps-type/difficulty.");
         }  
     }elseif(count($args) >= 1){
         //$args = array_splice($args,1);
@@ -394,7 +404,7 @@ function parseCommandArgs($argsStr,$user,$broadcaster){
                     $result['difficulty'] = "Edit";
                 break;
                 default:
-                    die("$user gave invalid steps-type or difficulty.");
+                    die("@$user gave invalid steps-type or difficulty.");
             }
         }
     }
@@ -409,7 +419,7 @@ function parseCommandArgs($argsStr,$user,$broadcaster){
         }
         if(!empty($result['difficulty']) && empty($result['stepstype'])){
             //no stepstype in sm_broadcaster and only difficulty specified
-            die("$user didn't specify a steps-type!");
+            die("@$user didn't specify a steps-type!");
         }
     }elseif(!empty($result['stepstype'])){
         $sql0 = "SELECT * FROM sm_broadcaster WHERE broadcaster = '$broadcaster'";
@@ -417,7 +427,7 @@ function parseCommandArgs($argsStr,$user,$broadcaster){
         if(mysqli_num_rows($retval0) == 1){
             $row0 = mysqli_fetch_assoc($retval0);
             if($row0['stepstype'] != $result['stepstype'] && !empty($row0['stepstype'])){
-                die("$user => The broadcaster has limited requests to \"".$row0['stepstype']."\".");
+                die("@$user => The broadcaster has limited requests to \"".$row0['stepstype']."\".");
             }
         }
     }

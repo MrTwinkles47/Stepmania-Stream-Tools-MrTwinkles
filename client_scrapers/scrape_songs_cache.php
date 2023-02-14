@@ -46,6 +46,7 @@ if(file_exists(__DIR__."/config.php") && is_file(__DIR__."/config.php")){
 // Code
 
 function check_environment(){
+	global $timezone;
 	//check for a php.ini file
 	$iniPath = php_ini_loaded_file();
 
@@ -54,6 +55,35 @@ function check_environment(){
 		wh_log("ERROR: A php.ini configuration file was not found. Refer to the documentation on how to configure your php envirnment for SMRequests.");
 		die("A php.ini configuration file was not found. Refer to the documentation on how to configure your php envirnment for SMRequests." . PHP_EOL);
 	}
+
+	//check php version and dump to log
+	switch(version_compare(PHP_VERSION,'7.4.26')){
+		case -1:
+			//version too low
+			wh_log("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
+			die("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
+			break;
+		case 1:
+			//version higher than test
+			if(version_compare(PHP_VERSION,'8.0.0','>=')){
+				//php8 is not supported....yet
+				wh_log("PHP 8 is not supported! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
+				die("PHP 8 is not supported! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
+			}
+			//full steam ahead!	
+			break;
+		default:
+			//versions match!
+	}
+
+	//set timezone
+	if($timezone){
+		if(!date_default_timezone_set($timezone)){
+			wh_log("Timezone not set in config.php or invalid.");
+			wh_log("Timezone set to: " . date_default_timezone_get() . ".");
+		}
+	}
+
 	//config found. check for enabled extensions
 	$expectedExts = array('curl','json','mbstring','SimpleXML');
 	$loadedPhpExt = get_loaded_extensions();
@@ -360,43 +390,61 @@ function doesFileExist(string $songFilename){
 	}
 
 	//check if the chart file exists on the filesystem
-	if(substr($songFilename,0,strpos($songFilename,"/",1)+1) == "/Songs/"){
+	if(preg_match('/^\/Songs\//',$songFilename)){
 		//file is in the normal "Songs" folder
-		$songFilename = str_replace("/Songs/",$songsDir."/",$songFilename);
-		if(file_exists($songFilename)){
+		if(is_array($songsDir)){
+			//incorrectly configured as an array. Use only the first directory.
+			$songsDir = $songsDir[0];
+			wh_log("StepMania supports *only* a single 'Songs' folder. Using the first directory in the array: \"".$songsDir."\"");
+		}
+		$songFilenameAbs = preg_replace('/^\/Songs\//',$songsDir."/",$songFilename);
+		if(file_exists($songFilenameAbs)){
 			$return = TRUE;
 		}else{
 			//try converting back to ISO-8859-1. Maybe there is a non-UTF-8 character found in a Windows filename?
-			$songFilename = utf8_decode($songFilename);
-			if(file_exists($songFilename)){
+			$songFilenameAbs = utf8_decode($songFilenameAbs);
+			if(file_exists($songFilenameAbs)){
 				$return = TRUE;
 			}else{
-				wh_log("File Not Found: ".$songFilename);
+				wh_log("'/Songs/' File Not Found: ".$songFilenameAbs);
 			}
 		}
-	}elseif(substr($songFilename,0,strpos($songFilename,"/",1)+1) == "/AdditionalSongs/" && !empty($addSongsDir)){
+	}elseif(preg_match('/^\/AdditionalSongs\//',$songFilename)){
 		//file is in one of the "AdditionalSongs" folder(s)
+		if(empty($addSongsDir)){
+			//AdditionalSongsFolder is missing in config file. Exit.
+			wh_log("It appears you are using an \"AdditionalSongsFolder\" and it was not specified in the configuration file! Please add the folder(s) to the config.php file.");
+			die("It appears you are using an \"AdditionalSongsFolder\" and it was not specified in the configuration file! Please add the folder(s) to the config.php file.".PHP_EOL);
+		}
+
 		if(!is_array($addSongsDir)){
 			$addSongsDir = array($addSongsDir);
 		}
-		foreach($addSongsDir as $songsDir){
+		foreach($addSongsDir as $dir){
 			//loop through the "AdditionalSongsFolders"
-			$songFilename = str_replace("/AdditionalSongs/",$songsDir."/",$songFilename);
-			if(file_exists($songFilename)){
+			$songFilenameAbs = preg_replace('/^\/AdditionalSongs\//',$dir."/",$songFilename);
+			if(file_exists($songFilenameAbs)){
 				$return = TRUE;
+				break;
 			}else{
 				//try converting back to ISO-8859-1. Maybe there is a non-UTF-8 character found in a Windows filename?
-				$songFilename = utf8_decode($songFilename);
-				if(file_exists($songFilename)){
+				$songFilenameAbs = utf8_decode($songFilenameAbs);
+				if(file_exists($songFilenameAbs)){
 					$return = TRUE;
+					break;
 				}else{
-					wh_log("File Not Found: ".$songFilename);
+					//wh_log("File Not Found: ".$songFilename);
 				}
 			}
 		}
-	}elseif(substr($songFilename,0,strpos($songFilename,"/",1)+1) == "/AdditionalSongs/" && empty($addSongsDir)){
-		wh_log("It appears you are using an \"AdditionalSongsFolder\" and it was not specified in the configuration file! Please add the folder(s) to the config.php file.");
-		die("It appears you are using an \"AdditionalSongsFolder\" and it was not specified in the configuration file! Please add the folder(s) to the config.php file.".PHP_EOL);
+		//looped through all AdditionSongs folders
+		if(!$return){
+			//did not find file in ANY folder
+			wh_log("'/AdditionalSongs/' File Not Found: ".$songFilenameAbs);
+		}
+	}else{
+		wh_log("Something is wrong with the song cache files. Songs must either be in '/Songs/' or '/AdditionalSongs/'");
+		die("Something is wrong with the song cache files. Songs must either be in '/Songs/' or '/AdditionalSongs/'" . PHP_EOL);
 	}
 
 	return (bool) $return;
@@ -424,9 +472,17 @@ function get_progress($timeChunkStart, $currentChunk, $totalChunks, array $chunk
 	$percentChunk = round (($currentChunk / $totalChunks) * 100, 0); //"integer" percent
 
 	$avgTimePerChunk = array_sum($chunkTimes) / count($chunkTimes);
-	$timeRemain = round (($avgTimePerChunk * $chunksRemain) / 60, 1); //minutes
+	$timeRemain = $avgTimePerChunk * $chunksRemain; //seconds
 
-	$progress = array('percent' => $percentChunk, 'time' => $timeRemain, 'chunktimes' => $chunkTimes);
+	if($timeRemain > 60){
+		$timeUnit = "mins";
+		$timeRemain = round ($timeRemain / 60, 1); //minutes
+	}elseif($timeRemain <= 60){
+		$timeUnit = "secs";
+		$timeRemain = round ($timeRemain, 0); //seconds
+	}
+
+	$progress = array('percent' => $percentChunk, 'time' => $timeRemain, 'unit' => $timeUnit, 'chunktimes' => $chunkTimes);
 
 	return (array) $progress;
 }
@@ -589,8 +645,8 @@ foreach ($files as $filesChunk){
 	}
 	//show progress of file chunks
 	$progress = get_progress($timeChunkStart,$currentChunk,$totalChunks,$chunkTimes);
-	echo $progress['percent'] . "% Complete  |  " . $progress['time'] . " mins remaining..." . PHP_EOL;
-	wh_log ($progress['percent'] . "% Complete  |  " . $progress['time'] . " mins remaining...");
+	echo $progress['percent'] . "% Complete  |  " . $progress['time'] . " " . $progress['unit'] . " remaining..." . PHP_EOL;
+	wh_log ($progress['percent'] . "% Complete  |  " . $progress['time'] . " " . $progress['unit'] . " remaining...");
 	$chunkTimes = $progress['chunktimes'];
 
 	$currentChunk++;

@@ -26,11 +26,11 @@ if(strcasecmp($_SERVER['REQUEST_METHOD'], 'POST') != 0){
 if(isset($_SERVER['HTTP_KEY'])){
 	$keyToken = trim($_SERVER['HTTP_KEY']);
 	if(empty($keyToken)){
-		die("Fuck off" . PHP_EOL);
+		die("Error: No secrity key from client! Check your config.php." . PHP_EOL);
 	}
 	$keyToken = base64_decode($keyToken);
 	if($keyToken != $security_key){
-		die("Fuck off" . PHP_EOL);
+		die("Error: Incorrect security key: \"$keyToken\"! Check your config.php." . PHP_EOL);
 	}
 }else{
 	die("No valid HTTP security_key header" . PHP_EOL);
@@ -83,7 +83,7 @@ function splitSongDir(string $song_dir){
 	return (array) $splitDir;
 }
 
-function processWebhook(string $url) {
+function processWebhook(string $url, string $message) {
 	$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, $url);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
@@ -93,6 +93,37 @@ function processWebhook(string $url) {
 	// close cURL resource, and free up system resources
 	curl_close($ch);
 	return true;
+}
+
+function processCallStreamElements(string $url, string $jwt, string $message) {
+	$ch = curl_init();
+		curl_setopt_array($ch, [
+			  CURLOPT_URL => $url,
+			  CURLOPT_RETURNTRANSFER => true,
+			  CURLOPT_ENCODING => "",
+			  CURLOPT_MAXREDIRS => 10,
+			  CURLOPT_TIMEOUT => 30,
+			  CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+			  CURLOPT_CUSTOMREQUEST => "POST",
+			  CURLOPT_POSTFIELDS => "{\n  \"message\": \"". $message . "\"\n}",
+			  CURLOPT_HTTPHEADER => [
+				"Accept: Application/json",
+				"Authorization: Bearer " . $jwt,
+				"Content-Type: application/json"
+			  ],
+			]);	
+		
+	$result = curl_exec ($ch);
+	$err = curl_error($ch);
+	
+	// close cURL resource, and free up system resources
+	curl_close($ch);
+	
+	if ($err) {
+	  return $err;
+	} else {
+	  return true;
+	}
 }
 
 function lookupSongID (string $song_dir){
@@ -622,48 +653,63 @@ function addHighScoretoDB (array $highscore_array){
 			//Let's build the VALUES string!
 			$sql1_values = "(\"{$highscore['SongDir']}\",\"{$song_id}\",\"{$song_title}\",\"{$song_pack}\",\"{$highscore['Difficulty']}\",\"{$highscore['StepsType']}\",\"{$highscore['ChartHash']}\",\"{$highscore['DisplayName']}\",\"{$highscore['ProfileID']}\",\"{$highscore['ProfileType']}\",\"{$highscore['HighScore']['Grade']}\",\"{$highscore['HighScore']['Score']}\",\"{$highscore['HighScore']['PercentDP']}\",\"{$highscore['HighScore']['Modifiers']}\",\"{$highscore['HighScore']['DateTime']}\",\"{$highscore['HighScore']['SurviveSeconds']}\",\"{$highscore['HighScore']['LifeRemainingSeconds']}\",\"{$highscore['HighScore']['Disqualified']}\",\"{$highscore['HighScore']['MaxCombo']}\",\"{$stageAward}\",\"{$peakComboAward}\",\"{$highscore['HighScore']['PlayerGuid']}\",\"{$highscore['HighScore']['MachineGuid']}\",\"{$highscore['HighScore']['TapNoteScores']['HitMine']}\",\"{$highscore['HighScore']['TapNoteScores']['AvoidMine']}\",\"{$highscore['HighScore']['TapNoteScores']['CheckpointMiss']}\",\"{$highscore['HighScore']['TapNoteScores']['Miss']}\",\"{$highscore['HighScore']['TapNoteScores']['W5']}\",\"{$highscore['HighScore']['TapNoteScores']['W4']}\",\"{$highscore['HighScore']['TapNoteScores']['W3']}\",\"{$highscore['HighScore']['TapNoteScores']['W2']}\",\"{$highscore['HighScore']['TapNoteScores']['W1']}\",\"{$highscore['HighScore']['TapNoteScores']['CheckpointHit']}\",\"{$highscore['HighScore']['HoldNoteScores']['LetGo']}\",\"{$highscore['HighScore']['HoldNoteScores']['Held']}\",\"{$highscore['HighScore']['HoldNoteScores']['MissedHold']}\",\"{$highscore['HighScore']['RadarValues']['Stream']}\",\"{$highscore['HighScore']['RadarValues']['Voltage']}\",\"{$highscore['HighScore']['RadarValues']['Air']}\",\"{$highscore['HighScore']['RadarValues']['Freeze']}\",\"{$highscore['HighScore']['RadarValues']['Chaos']}\",\"{$highscore['HighScore']['RadarValues']['Notes']}\",\"{$highscore['HighScore']['RadarValues']['TapsAndHolds']}\",\"{$highscore['HighScore']['RadarValues']['Jumps']}\",\"{$highscore['HighScore']['RadarValues']['Holds']}\",\"{$highscore['HighScore']['RadarValues']['Mines']}\",\"{$highscore['HighScore']['RadarValues']['Hands']}\",\"{$highscore['HighScore']['RadarValues']['Rolls']}\",\"{$highscore['HighScore']['RadarValues']['Lifts']}\",\"{$highscore['HighScore']['RadarValues']['Fakes']}\")"; 
 				
-			echo "Adding a " . $highscore['HighScore']['Grade'] . " grade for the " . $highscore['Difficulty'] . " chart of " . $song_title . " from " . $song_pack . PHP_EOL;
+			echo "Adding a " . $highscore['HighScore']['Grade'] . " grade for the " . $highscore['Difficulty'] . "/" . $highscore['StepsType'] . " chart of " . $song_title . " from " . $song_pack . PHP_EOL;
 			
 			global $enableWebHook;
-			echo "webhooks is " . $enableWebHook ."!";
+			//echo "webhooks is " . $enableWebHook ."!";
 			
 			if($enableWebHook){
 				//Check to see what webhooks are needing processed
-				$sql_wh = "SELECT id, type, url, criteria, qualifier FROM sm_webhooks";
+				$sql_wh = "SELECT id, type, url, criteria, qualifier, jwt FROM sm_webhooks";
 				$res_wh = mysqli_query($conn, $sql_wh);
 				if (mysqli_num_rows($res_wh) == 0){
 					echo "No webhooks to process.";
 				} else {
 					while($hooks = mysqli_fetch_assoc($res_wh)) {
-						var_dump($hooks);
-						echo "check for hooks type is " . $hooks['type'] . " right now.";
+						
+						$whscore = $highscore['HighScore']['PercentDP'] * 100;
+						//TODO: Customize this message better. Maybe make a configurable message to parse somewhere.
+						$botMessage = "Our Player has achieved a " . $whscore. " on " . $song_title . " from " . $song_pack; 
+						//echo "check for hooks type is " . $hooks['type'] . " right now.";
 						switch ($hooks['type']) {
 							case 1:
-								echo "Case is 1. check for hooks criteria is " . $hooks['criteria'] . " right now.";
+								//echo "Case is 1. check for hooks criteria is " . $hooks['criteria'] . " right now.";
 								//Process the highschore by Grade
 								if ($highscore['HighScore']['Grade'] == $hooks['criteria']) {
-									echo "Case is 1. Criteria Matched. Check URL " . $hooks['url'] . " right now.";
-									processWebhook($hooks['url']);
+									
+									//echo "Case is 1. Criteria Matched. Check URL " . $hooks['url'] . " right now.";
+									//echo "string contains check is :" . str_contains($hooks['url'], 'streamelements') . " right now.";
+									if (str_contains($hooks['url'], 'streamelements')) {
+										processCallStreamElements($hooks['url'], $hooks['jwt'], $botMessage);
+									} else {
+										processWebhook($hooks['url'], $botMessage);
+									}
 								}
 								break;
 							case 2:
-								echo "Case is 2. check for hooks criteria is " . $hooks['criteria'] . " right now.";
+								//echo "Case is 2. check for hooks criteria is " . $hooks['criteria'] . " right now.";
 								//Process the highscore by award
 								if ($highscore['HighScore']['StageAward'] == $hooks['criteria']) {
-									echo "Case is 1. Criteria Matched. Check URL " . $hooks['url'] . " right now.";
-									processWebhook($hooks['url']);
+									if (str_contains($hooks['url'], 'streamelements')) {
+										processCallStreamElements($hooks['url'], $hooks['jwt'], $botMessage);
+									} else {
+										processWebhook($hooks['url'], $botMessage);
+									}
 								}
 								break;
 							case 3:
-								echo "Case is 3. check for hooks criteria is " . $hooks['criteria'] . " right now.";
+								//echo "Case is 3. check for hooks criteria is " . $hooks['criteria'] . " right now.";
 								//Process a highscore by Peak Combo Award
 								if ($highscore['HighScore']['PeakComboAward'] == $hooks['criteria']) {
-									echo "Case is 1. Criteria Matched. Check URL " . $hooks['url'] . " right now.";
-									processWebhook($hooks['url']);
+									if (str_contains($hooks['url'], 'streamelements')) {
+										processCallStreamElements($hooks['url'], $hooks['jwt'], $botMessage);
+									} else {
+										processWebhook($hooks['url'], $botMessage);
+									}
 								}
 								break;
 							case 4:
-								echo "Case is 4. check for hooks criteria is " . $hooks['criteria'] . " right now.";
+								//echo "Case is 4. check for hooks criteria is " . $hooks['criteria'] . " right now.";
 								//Maybe send this to be processed in markComplete?
 								//Process a highscore specific to GitGud
 								echo "Code for Gitgud isn't ready yet";
