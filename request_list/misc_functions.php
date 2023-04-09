@@ -22,7 +22,7 @@ function add_user($userid, $user){
 	
 	$user = strtolower($user);
 	$sql = "INSERT INTO sm_requestors (twitchid, name, dateadded) VALUES ('$userid', '$user', NOW())";
-	$retval = mysqli_query( $conn, $sql );
+	mysqli_query( $conn, $sql );
 	$the_id = mysqli_insert_id($conn);
 
 	return($the_id);
@@ -167,7 +167,7 @@ function is_emote_request($song){
 function get_broadcaster_limits($broadcaster){
     global $conn;
     $broadcaserLimits = array();
-    $sql0 = "SELECT * FROM sm_broadcaster WHERE broadcaster = '$broadcaster'";
+    $sql0 = "SELECT * FROM sm_broadcaster WHERE broadcaster LIKE '$broadcaster'";
     $retval0 = mysqli_query( $conn, $sql0 );
 
     if(mysqli_num_rows($retval0) == 1){
@@ -401,7 +401,7 @@ function parseCommandArgs($argsStr,$user,$broadcaster){
 
     //if stepstype is empty, check if sm_broadcast has one set globally
     if(empty($result['stepstype'])){
-        $sql0 = "SELECT * FROM sm_broadcaster WHERE broadcaster = '$broadcaster'";
+        $sql0 = "SELECT * FROM sm_broadcaster WHERE broadcaster LIKE '$broadcaster'";
         $retval0 = mysqli_query( $conn, $sql0 );
         if(mysqli_num_rows($retval0) == 1){
             $row0 = mysqli_fetch_assoc($retval0);
@@ -412,7 +412,7 @@ function parseCommandArgs($argsStr,$user,$broadcaster){
             die("@$user didn't specify a steps-type!");
         }
     }elseif(!empty($result['stepstype'])){
-        $sql0 = "SELECT * FROM sm_broadcaster WHERE broadcaster = '$broadcaster'";
+        $sql0 = "SELECT * FROM sm_broadcaster WHERE broadcaster LIKE '$broadcaster'";
         $retval0 = mysqli_query( $conn, $sql0 );
         if(mysqli_num_rows($retval0) == 1){
             $row0 = mysqli_fetch_assoc($retval0);

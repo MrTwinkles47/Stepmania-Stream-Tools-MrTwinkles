@@ -164,8 +164,9 @@ if(isset($_GET["userid"])){
 if(isset($_GET["broadcaster"]) && !empty($_GET["broadcaster"])){
 	$broadcaster = mysqli_real_escape_string($conn,$_GET["broadcaster"]);
 	check_request_toggle($broadcaster, $user);
-	if (array_key_exists($broadcaster,$broadcasters)){
-		$profileName = $broadcasters[$broadcaster];
+	$broadcasters = array_change_key_case($broadcasters,CASE_LOWER);
+	if (array_key_exists(strtolower($broadcaster),$broadcasters)){
+		$profileName = $broadcasters[strtolower($broadcaster)];
 	}else{
 		$profileName = "%";
 	}
@@ -521,7 +522,7 @@ if($_GET["random"] == "roll"){
 	$retval = mysqli_query( $conn, $sql );
 
 	if (mysqli_num_rows($retval) > 0) {
-		echo "@$user rolled (request with !requestid [song id]):\n";
+		echo "@$user rolled (request with !requestid [song id]):";
 		$i=1;
 		while(($row = mysqli_fetch_assoc($retval)) && ($i <= $num)) {
 			if(!recently_played($row["id"],1) && check_stepstype($broadcaster,$row["id"]) && check_meter($broadcaster,$row["id"])){
@@ -549,7 +550,7 @@ if($_GET["random"] == "roll"){
 		
 		if(mysqli_num_rows($retval) >= 100) {
 			//let's hope for at least 100 results so that it at least seems like a random pick
-			echo "@$user rolled (request with !requestid [song id]):\n";
+			echo "@$user rolled (request with !requestid [song id]):";
 			$i=1;
 			while(($row = mysqli_fetch_assoc($retval)) && ($i <= $num)) {
 				if(!recently_played($row["id"],1) && check_stepstype($broadcaster,$row["id"]) && check_meter($broadcaster,$row["id"])){
