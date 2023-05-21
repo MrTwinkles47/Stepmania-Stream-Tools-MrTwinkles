@@ -431,7 +431,7 @@ if($_GET["random"] == "gitgud"){
 	$topTotal = get_top_percent_played_songs($profileName,$whereTypeDiffClauseSP);
 	$averagePercentDP = get_average_percentDP($profileName,$whereTypeDiffClause);
 
-	$sql = "SELECT t2.song_id AS song_id, sm_songs.title AS title, sm_songs.subtitle AS subtitle, sm_songs.artist AS artist, sm_songs.pack AS pack, t2.percentdp as percentdp, grade, score, t2.stepstype, difficulty, scores, DATETIME
+	$sql = "SELECT t2.song_id AS song_id, sm_songs.title AS title, sm_songs.subtitle AS subtitle, sm_songs.artist AS artist, sm_songs.pack AS pack, t2.percentdp as percentdp, grade, score, t2.stepstype, difficulty, scores, DATE(datetime)
 		FROM sm_scores
 		JOIN(
 			SELECT sm_scores.song_id, MAX(percentdp) AS percentdp, COUNT(sm_scores.id) AS scores, stepstype
@@ -492,7 +492,7 @@ if($_GET["random"] == "gitgud"){
 
 					$displayModeDiff = display_ModeDiff(array('stepstype' => $row['stepstype'],'difficulty' => $row['difficulty']));
 					$displayArtist = get_duplicate_song_artist ($row["song_id"]);
-					echo ("@$user dares you to beat ".$displayScore." from ".date_format($row["datetime"],"Y/m/d")." at " . trim($row["title"]." ".$row["subtitle"]).$displayArtist. " from " . $row["pack"] . $displayModeDiff . " ");
+					echo ("@$user dares you to beat ".$displayScore." from ".date_format(date_create($row["datetime"]),"Y/n/j")." at " . trim($row["title"]." ".$row["subtitle"]).$displayArtist. " from " . $row["pack"] . $displayModeDiff . " ");
 					//wh_log("@$user requested $request_type (TopPercent: $topTotal, AveragePDP: $averagePercentDP): $displayScore at " . $row["song_id"] . " : " . trim($row["title"]." ".$row["subtitle"]).$displayArtist. " from " . $row["pack"] . $displayModeDiff);
 					$i++;
 				}
