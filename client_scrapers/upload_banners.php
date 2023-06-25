@@ -32,11 +32,15 @@ echo "" . PHP_EOL;
 wh_log("Starting SMRequests v$versionClient Song Pack Banner Uploader...");
 //
 
-if(file_exists(__DIR__."/config.php") && is_file(__DIR__."/config.php")){
-	require_once ('config.php');
-}else{
+if(!file_exists(__DIR__."/config.php") && !is_file(__DIR__."/config.php")){
 	wh_log("config.php file not found! You must configure these scripts before running. You can find an example config.php file at config.example.php.");
 	die("config.php file not found! You must configure these scripts before running. You can find an example config.php file at config.example.php.".PHP_EOL);
+}else{
+	require_once ('config.php');
+	if(CONFIG_VERSION != $versionClient || empty(CONFIG_VERSION) || empty($versionClient)){
+		wh_log("config.php file is from a previous version! You must build a new config.php from the current config.example.php file. Exiting...");
+		die("config.php file is from a previous version! You must build a new config.php from the current config.example.php file. Exiting...".PHP_EOL);
+	}
 }
 
 function check_environment(){
