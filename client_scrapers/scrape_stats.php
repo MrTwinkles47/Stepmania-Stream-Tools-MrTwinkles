@@ -17,7 +17,6 @@ $versionClient = get_version();
 cli_set_process_title("SMRequests v$versionClient | StepMania Stats.XML Scraper");
 
 //process command arguments
-$autoRun = TRUE;
 $frequency = 5;
 $fileTime = "";
 $statsXMLfilename = "Stats.xml";
@@ -60,9 +59,6 @@ if(file_exists(__DIR__."/config.php") && is_file(__DIR__."/config.php")){
 	wh_log("config.php file not found! You must configure these scripts before running. You can find an example config.php file at config.example.php.");
 	die("config.php file not found! You must configure these scripts before running. You can find an example config.php file at config.example.php.".PHP_EOL);
 }
-
-//check for offline mode in the config
-//if ($autoRun == TRUE && $offlineMode == TRUE){die("[-auto] and \"Offline Mode\" cannot be set at the same time!" . PHP_EOL);}
 
 //////
 
@@ -535,12 +531,6 @@ $USBProfileDir = process_USBProfileDir($USBProfileDir);
 //find stats.xml files
 $file_arr = find_statsxml ($saveDir,$profileID,$USBProfileDir);
 
-if ($autoRun){
-	//welcome to an infinite loop of stats
-	//echo "\\\\\\\\\\\\\\\\\\AUTO MODE ENABLED////////" . PHP_EOL;
-	wh_log("AUTO MODE ENABLED");
-}
-
 //endless loop (the way PHP is SuPpOsEd to be used)
 for (;;){
 
@@ -606,10 +596,7 @@ for (;;){
 		}
 		$file['ftime'] = $file['mtime'];
 	}
-	if (!$autoRun){
-		//autorun was not set, break the loop
-		break;
-	}
+
 	echo "."; //what's a group of dots called?
 	clearstatcache(); //file times are cached, this clears it
 	sleep($frequency); //wait for # seconds
