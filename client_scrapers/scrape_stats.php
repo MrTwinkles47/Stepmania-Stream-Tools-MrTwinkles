@@ -447,7 +447,9 @@ function statsXMLtoArray (array $file){
 		}
 	}
 
-	$timestampLastPlayed = max($timestampLastPlayedArr); //overwrite the lastplayed timestamp with the new (latest) value
+	if(!empty($timestampLastPlayedArr)){
+		$timestampLastPlayed = max($timestampLastPlayedArr); //overwrite the lastplayed timestamp with the new (latest) value
+	}
 	//build the final array
 	$stats_arr = array('LastPlayed' => $statsLastPlayed, 'HighScores' => $statsHighScores, 'timestampLastPlayed' => $timestampLastPlayed);
 
