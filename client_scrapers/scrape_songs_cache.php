@@ -413,7 +413,7 @@ function doesFileExist(string $songFilename){
 		}else{
 			//try converting back to ISO-8859-1. Maybe there is a non-UTF-8 character found in a Windows filename?
 			//$songFilenameAbs = utf8_decode($songFilenameAbs);
-			$songFilenameAbs = mb_convert_encoding('ISO-8859-1','UTF-8');
+			$songFilenameAbs = mb_convert_encoding($songFilenameAbs,'ISO-8859-1','UTF-8');
 			if(file_exists($songFilenameAbs)){
 				$return = TRUE;
 			}else{
@@ -440,7 +440,7 @@ function doesFileExist(string $songFilename){
 			}else{
 				//try converting back to ISO-8859-1. Maybe there is a non-UTF-8 character found in a Windows filename?
 				//$songFilenameAbs = utf8_decode($songFilenameAbs);
-				$songFilenameAbs = mb_convert_encoding('ISO-8859-1','UTF-8');
+				$songFilenameAbs = mb_convert_encoding($songFilenameAbs,'ISO-8859-1','UTF-8');
 				if(file_exists($songFilenameAbs)){
 					$return = TRUE;
 					break;
