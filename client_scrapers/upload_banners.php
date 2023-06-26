@@ -294,7 +294,12 @@ $banners_copied = $notFoundBanners = $cPacks = 0;
 $fileSizeMax = 5242880; //5MB
 
 // find all the pack/group folders
-$pack_dir = findFiles($songsDir);
+//songDir valid?
+if(empty($songsDir) || !file_exists($songsDir)){
+	wh_log("StepMania song directory is empty or invalid. Check your config.php.".PHP_EOL);
+	die("StepMania song directory is empty or invalid. Check your config.php.");
+}
+$packDirs = findFiles($songsDir);
 
 //add any additional songs folder(s)
 if(!empty($addSongsDir)){
@@ -302,11 +307,11 @@ if(!empty($addSongsDir)){
 		$addSongsDir = array($addSongsDir);
 	}
 	foreach($addSongsDir as $directory){
-		$pack_dir[] = findFiles($directory);
+		$packDirs[] = findFiles($directory);
 	}
 }
 
-$cPacks = count($pack_dir);
+$cPacks = count($packDirs);
 
 if ($cPacks == 0){
 	wh_log("No pack/group folders found. Your StepMania /Songs directory may be located in \"AppData\""); 
@@ -315,7 +320,7 @@ if ($cPacks == 0){
 
 $img_arr = array();
 
-foreach ($pack_dir as $path){
+foreach ($packDirs as $path){
 	
 	$pack_name = $img_path = "";
 	//get pack name from folder

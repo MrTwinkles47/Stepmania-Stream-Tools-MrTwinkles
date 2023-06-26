@@ -384,6 +384,12 @@ function doesFileExist(string $songFilename){
 
 	$return = FALSE;
 
+	//songDir valid?
+	if(empty($songDir) || !file_exists($songsDir)){
+		wh_log("StepMania song directory is empty or invalid. Check your config.php.".PHP_EOL);
+		die("StepMania song directory is empty or invalid. Check your config.php.");
+	}
+
 	//fix possible character encoding
 	//convert string to UTF-8 then back to ISO-8859-1 so Windows can understand it
 	$songFilenameOriginal = $songFilename;
@@ -579,6 +585,11 @@ check_target_url();
 
 //find cache files
 $files = array ();
+//songDir valid?
+if(empty($cacheDir) || !file_exists($cacheDir)){
+	wh_log("StepMania song cache directory is empty or invalid. Check your config.php.".PHP_EOL);
+	die("StepMania song cache directory is empty or invalid. Check your config.php.");
+}
 foreach(glob("{$cacheDir}/*", GLOB_BRACE) as $file) {
     $files[] = $file;
 }
@@ -586,6 +597,10 @@ foreach(glob("{$cacheDir}/*", GLOB_BRACE) as $file) {
 if(count($files) == 0){
 	wh_log("No files. Songs cache directory not found in Stepmania directory. You must start Stepmania before running this software. Also, if you are not running Stepmania in portable mode, your Stepmania directory may be in \"AppData\"."); 
 	die("No files. Songs cache directory not found in Stepmania directory. You must start Stepmania before running this software. Also, if you are not running Stepmania in portable mode, your Stepmania directory may be in \"AppData\".");
+}elseif(in_array("index.cache",$files)){
+	//wrong cache folder
+	wh_log("Invalid StepMania songs cache directory.");
+	die("Invalid StepMania songs cache directory.".PHP_EOL);
 }
 
 $i = 0;

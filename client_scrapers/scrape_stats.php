@@ -543,6 +543,11 @@ $profileID = process_profileIDs($profileID);
 $USBProfileDir = process_USBProfileDir($USBProfileDir);
 
 //find stats.xml files
+//saveDir valid?
+if(empty($saveDir) || !file_exists($saveDir)){
+	wh_log("StepMania /Save directory is empty or invalid. Check your config.php.".PHP_EOL);
+	die("StepMania /Saveg directory is empty or invalid. Check your config.php.");
+}
 $file_arr = find_statsxml ($saveDir,$profileID,$USBProfileDir);
 
 //endless loop (the way PHP is SuPpOsEd to be used)
