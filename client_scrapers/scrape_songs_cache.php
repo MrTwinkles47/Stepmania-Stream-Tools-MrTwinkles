@@ -597,7 +597,7 @@ foreach(glob("{$cacheDir}/*", GLOB_BRACE) as $file) {
 if(count($files) == 0){
 	wh_log("No files. Songs cache directory not found in Stepmania directory. You must start Stepmania before running this software. Also, if you are not running Stepmania in portable mode, your Stepmania directory may be in \"AppData\"."); 
 	die("No files. Songs cache directory not found in Stepmania directory. You must start Stepmania before running this software. Also, if you are not running Stepmania in portable mode, your Stepmania directory may be in \"AppData\".");
-}elseif(in_array("index.cache",$files)){
+}elseif(in_array("$cacheDir/index.cache",$files)){
 	//wrong cache folder
 	wh_log("Invalid StepMania songs cache directory.");
 	die("Invalid StepMania songs cache directory.".PHP_EOL);
