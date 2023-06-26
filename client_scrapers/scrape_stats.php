@@ -243,7 +243,10 @@ function fixEncoding(string $line){
 	return (string) $line;
 }
 
-function parseXmlErrors($errors,array $xmlArray){
+function parseXmlErrors($errors, string $xml_file){
+	global $statsXMLfilename;
+	//open xml as generic file as an array
+	$xmlArray = file($xml_file);
 	foreach ($errors as $error){
 		if ($error->code == 9){
 			//error code: 9 is "Invalid UTF-8 encoding detected"
@@ -252,7 +255,7 @@ function parseXmlErrors($errors,array $xmlArray){
 			wh_log("Oh look! StepMania left us invalid UTF-8 characters in an XML file. I recommend removing all special characters from this song's directory name!");
 			//get line number of the invalid character(s)
 			$lineNo = $error->line - 1;
-			//open file, fix encoding, and write a new line
+			//fix encoding, and write a new line
 			echo "Line ".$lineNo.": [".str_replace(array("\n","\r"),'',$xmlArray[$lineNo])."] Fixing (Temporarily)...".PHP_EOL;
 			wh_log("Line ".$lineNo.": [".str_replace(array("\n","\r"),'',$xmlArray[$lineNo])."] Fixing (Temporarily)...");
 			$xmlArray[$lineNo] = fixEncoding($xmlArray[$lineNo]);
@@ -261,11 +264,23 @@ function parseXmlErrors($errors,array $xmlArray){
 			//other errors haven't really popped up, so here, have the raw output!
 			wh_log(implode(PHP_EOL,(array) $errors)); 
 			print_r($errors);
+			die();
 		}
 	}
-	//write back changes to the file in memory and save as string
-	$xmlStr = implode(PHP_EOL,$xmlArray);
-	return (string) $xmlStr;
+	//write back changes to a new file
+	//$xmlStr = implode(PHP_EOL,$xmlArray);
+	$xmlFileFixed = str_replace($statsXMLfilename,$statsXMLfilename.".fixed",$xml_file);
+	if(file_exists($xmlFileFixed)){
+		//delete existing file
+		unlink($xmlFileFixed);
+	}
+	if(file_put_contents($xmlFileFixed,implode('',$xmlArray)) === FALSE){
+		//failed to write file
+		wh_log("Failed to write temporary Stats XML file after correcting for UTF-8 errors.");
+		die("Failed to write temporary Stats XML file after correcting for UTF-8 errors.".PHP_EOL);
+	}
+
+	return (string) $xmlFileFixed;
 }
 
 function find_statsxml(string $saveDir, array $profileID, array $USBProfileDir){
@@ -348,26 +363,21 @@ function statsXMLtoArray (array $file){
 	if (!empty($errors)){
 		//attempt to fix errors in memory then load xml (fixed) via string
 		//not a great solution, but blame StepMania, not me!
-		$xmlArray = file($xml_file);
-		$xmlStr = parseXmlErrors($errors,$xmlArray);
-		unset($xmlArray);
 		$xml = FALSE;
-		wh_log("Loading $statsXMLfilename file as a string (after correcting for UTF-8 errors).");
+		wh_log("Loading temp fixed $statsXMLfilename file after correcting for UTF-8 errors.");
 		while (!$xml){
+			$xmlFileFixed = parseXmlErrors($errors,$xml_file);
 			//php's simplexml loader, stops after the first error. We can't fix all the errors at one time.
 			//as long as the $xml is FALSE, we loop one fix at a time
 			libxml_clear_errors();
-			$xml = simplexml_load_string($xmlStr); //switched to loading as a string instead of a file
+			$xml = simplexml_load_file($xmlFileFixed); //switched to loading the *hopefully* fixed temp file
 			$errors = libxml_get_errors();
 			if (!empty($errors)){
-				$xmlArray = explode(PHP_EOL,$xmlStr);
-				$xmlStr = parseXmlErrors($errors,$xmlArray);
-				unset($xmlArray);
 				$xml = FALSE;
 			}
 		}
 	}
-	unset ($xmlArray,$xmlStr,$errors); //without unsetting thses variables, we get a memory leak over time
+	//unset ($xmlArray,$xmlStr,$errors); //without unsetting thses variables, we get a memory leak over time
 
 	//die if too many errors
 	if(!$xml){wh_log("Too many errors with $statsXMLfilename file."); die ("Too many errors with $statsXMLfilename file." . PHP_EOL);}
