@@ -343,9 +343,10 @@ foreach ($packDirs as $path){
 				$img_path = $img_path[0];
 			}
 			//check for filesize
-			if (filesize($img_path) > $fileSizeMax){
-				echo $pack_name."'s image file is too large (max size: ". $fileSizeMax / 1024^2 ."MB)!" . PHP_EOL;
-				wh_log($pack_name."'s image file is too large (max size: ". $fileSizeMax / 1024^2 ."MB)!");
+			$imgFileSize = filesize($img_path);
+			if ($imgFileSize == FALSE || $imgFileSize > $fileSizeMax){
+				echo($pack_name . "'s image file is too large: " . (round($imgFileSize / 1024 / 1024,2)) . "MB. Max size: " . ($fileSizeMax / 1024 / 1024) . "MB!" . PHP_EOL);
+				wh_log($pack_name . "'s image file is too large: " . (round($imgFileSize / 1024 / 1024,2)) . "MB. Max size: " . ($fileSizeMax / 1024 / 1024) . "MB!");
 			}else{
 				$img_arr[] = array('img_path' => $img_path,'pack_name' => $pack_name,'pack_name_old' => $pack_name_old);
 			}

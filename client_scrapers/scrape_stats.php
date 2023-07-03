@@ -348,9 +348,9 @@ function statsXMLtoArray (array $file){
 	$statsHighScores = array();
 	$stats_arr = array();
 
-	//OutFox "steps hash" implementation was changed 3+ times so far, it can be either:
-	$outFoxHash = array('StepsHash','ChartHash','Hash','OnlineHash');
-	$outFoxDesc = array('Description','OnlineDescription');
+	//Stepmania & OutFox "steps hash" implementation was changed 3+ times so far, it can be either:
+	$stepsHash = array('StepsHash','ChartHash','Hash','OnlineHash');
+	$stepsDesc = array('Description','OnlineDescription');
 	
 	//open xml file
 	libxml_clear_errors();
@@ -402,11 +402,11 @@ function statsXMLtoArray (array $file){
 		$song_dir = (string)$song['Dir'];
 		
 		foreach ($song->Steps as $steps){		
-			$steps_type = (string)$steps['StepsType']; //dance-single, dance-double, etc.
+			$stepsType = (string)$steps['StepsType']; //dance-single, dance-double, etc.
 			$difficulty = (string)$steps['Difficulty']; //Beginner, Medium, Expert, etc.
 			//$chartHash = (string)$steps['Hash']; //OutFox chart hash
 			$chartHash = "";
-			foreach ($outFoxHash as $hash){
+			foreach ($stepsHash as $hash){
 				if(!empty($steps[$hash])){
 					$chartHash = (string)$steps[$hash];
 					break;
@@ -414,7 +414,7 @@ function statsXMLtoArray (array $file){
 			}
 			//$stepsDescription = (string)$steps['Description']; //OutFox steps description
 			$stepsDescription = "";
-			foreach ($outFoxDesc as $desc){
+			foreach ($stepsDesc as $desc){
 				if(!empty($steps[$desc])){
 					$stepsDescription = (string)$steps[$desc];
 					break;
@@ -446,13 +446,13 @@ function statsXMLtoArray (array $file){
 					foreach ($highScores as $highScoreSingle){
 						if((string)strtotime($highScoreSingle->DateTime) > strtotime(date("Y-m-j",strtotime($timestampLastPlayed)))){
 							//highscore date/time is greater than the stored lastPlayed timestamp, add it to the array
-							$statsHighScores[] = array('DisplayName' => $display_name, 'PlayerGuid' => $playerGuid, 'ProfileID' => $profileID, 'ProfileType' => $profileType, 'SongDir' => $song_dir, 'StepsType' => $steps_type, 'Difficulty' => $difficulty, 'ChartHash' => $chartHash, 'StepsDescription' => $stepsDescription, 'NumTimesPlayed' => $num_played, 'LastPlayed' => $last_played, 'HighScore' => $highScoreSingle);
+							$statsHighScores[] = array('DisplayName' => $display_name, 'PlayerGuid' => $playerGuid, 'ProfileID' => $profileID, 'ProfileType' => $profileType, 'SongDir' => $song_dir, 'StepsType' => $stepsType, 'Difficulty' => $difficulty, 'ChartHash' => $chartHash, 'StepsDescription' => $stepsDescription, 'NumTimesPlayed' => $num_played, 'LastPlayed' => $last_played, 'HighScore' => $highScoreSingle);
 						}
 					}
 				}
 				if(strtotime($last_played) >= strtotime(date("Y-m-j",strtotime($timestampLastPlayed)))){
 					//lastplayed date/time is greater than the stored lastPlayed timestamp, add it to the array
-					$statsLastPlayed[] = array('DisplayName' => $display_name, 'PlayerGuid' => $playerGuid, 'ProfileID' => $profileID, 'ProfileType' => $profileType, 'SongDir' => $song_dir, 'StepsType' => $steps_type, 'Difficulty' => $difficulty, 'ChartHash' => $chartHash, 'StepsDescription' => $stepsDescription, 'NumTimesPlayed' => $num_played, 'LastPlayed' => $last_played);
+					$statsLastPlayed[] = array('DisplayName' => $display_name, 'PlayerGuid' => $playerGuid, 'ProfileID' => $profileID, 'ProfileType' => $profileType, 'SongDir' => $song_dir, 'StepsType' => $stepsType, 'Difficulty' => $difficulty, 'ChartHash' => $chartHash, 'StepsDescription' => $stepsDescription, 'NumTimesPlayed' => $num_played, 'LastPlayed' => $last_played);
 					//add the last_played timestamp to an array for safe keeping
 					$timestampLastPlayedArr[] = $last_played;
 				}
