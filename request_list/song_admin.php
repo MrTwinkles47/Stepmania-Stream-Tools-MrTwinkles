@@ -42,7 +42,7 @@ function toggle_ban_song($id,$type){
 		}
 
 	        $sql = "UPDATE sm_songs SET banned=$value WHERE id=$id LIMIT 1";
-        	$retval = mysqli_query( $conn, $sql );
+        	mysqli_query( $conn, $sql );
 
 		echo "$response";
 
