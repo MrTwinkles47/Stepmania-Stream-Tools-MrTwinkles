@@ -304,56 +304,56 @@ function parseCommandArgs($argsStr,$user,$broadcaster){
     //remove '#' from the resulting array
     $args = array_map(function($str) {return trim(str_replace("#","",$str));},$args);
 
-    if(count($args) == 1 && strlen($args[0]) == 3){
+    if(count($args) == 1 && (strlen($args[0]) == 2 || strlen($args[0]) == 3) ){
         switch (strtoupper($args[0])){
             case "BSP":
+            case "SE":
                 $result['stepstype'] = "dance-single";
                 $result['difficulty'] = "Easy";
             break;
             case "DSP":
             case "MSP":
             case "SSP":
+            case "SM":
                 $result['stepstype'] = "dance-single";
                 $result['difficulty'] = "Medium";
             break;
             case "ESP":
             case "HSP":
+            case "SH":
                 $result['stepstype'] = "dance-single";
                 $result['difficulty'] = "Hard";
             break;
             case "CSP":
+            case "SX":
                 $result['stepstype'] = "dance-single";
                 $result['difficulty'] = "Challenge";
             break;
-            case "XSP":
-                $result['stepstype'] = "dance-single";
-                $result['difficulty'] = "Edit";
-            break;
             case "BDP":
+            case "DE":
                 $result['stepstype'] = "dance-double";
                 $result['difficulty'] = "Easy";
             break;
             case "DDP":
             case "MDP":
             case "SDP":
+            case "DM":
                 $result['stepstype'] = "dance-double";
                 $result['difficulty'] = "Medium";
             break;
             case "EDP":
             case "HDP":
+            case "DH":
                 $result['stepstype'] = "dance-double";
                 $result['difficulty'] = "Hard";
             break;
             case "CDP":
+            case "DX":
                 $result['stepstype'] = "dance-double";
                 $result['difficulty'] = "Challenge";
             break;
-            case "XDP":
-                $result['stepstype'] = "dance-double";
-                $result['difficulty'] = "Edit";
-            break;
             default:
-                die("@$user gave an invalid 3-letter steps-type/difficulty.");
+                die("@$user gave an invalid 2- or 3-letter steps-type/difficulty combo.");
         }  
     }elseif(count($args) >= 1){
         //$args = array_splice($args,1);
