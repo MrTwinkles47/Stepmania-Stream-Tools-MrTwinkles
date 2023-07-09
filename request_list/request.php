@@ -18,7 +18,7 @@ if(!isset($_GET["user"])){
 function check_banned($song_id, $user){
 
 	global $conn;
-	$sql0 = "SELECT * FROM sm_songs WHERE installed=1 AND id = '{$song_id}' LIMIT 1";
+	$sql0 = "SELECT * FROM sm_songs WHERE installed=1 AND id = '$song_id' LIMIT 1";
 	if( mysqli_fetch_assoc( mysqli_query( $conn,$sql0))['banned'] == 1)
 		{
 		die("I'm sorry @$user, but I'm afraid I can't do that.");
@@ -59,7 +59,7 @@ function request_song($song_id, $requestor, $tier, $twitchid, $broadcaster, $com
 	$stepstype = $commandArgs['stepstype'];
 	$difficulty = $commandArgs['difficulty'];
 	
-	$sql = "INSERT INTO sm_requests (song_id, request_time, requestor, twitch_tier, broadcaster, request_type, stepstype, difficulty) VALUES ('{$song_id}', NOW(), '{$requestor}', '{$tier}', '{$broadcaster}', 'normal', '{$stepstype}', '{$difficulty}')";
+	$sql = "INSERT INTO sm_requests (song_id, request_time, requestor, twitch_tier, broadcaster, request_type, stepstype, difficulty) VALUES ('$song_id', NOW(), '$requestor', '$tier', '$broadcaster', 'normal', '$stepstype', '$difficulty')";
 	mysqli_query( $conn, $sql );
 }
 
@@ -108,7 +108,7 @@ if(isset($_GET["cancel"])){
 		die("Good one, ".$user. ", but only positive integers are allowed!");
 	}
 
-        $sql = "SELECT * FROM sm_requests WHERE requestor = '{$user}' AND broadcaster LIKE '{$broadcasterQuery}' AND state <> 'canceled' AND state <> 'skipped' AND state <> 'completed' ORDER BY request_time DESC LIMIT 1 OFFSET {$num}";
+        $sql = "SELECT * FROM sm_requests WHERE requestor = '$user' AND broadcaster LIKE '$broadcasterQuery' AND state <> 'canceled' AND state <> 'skipped' AND state <> 'completed' ORDER BY request_time DESC LIMIT 1 OFFSET $num";
 	$retval = mysqli_query( $conn, $sql );
 
         if (mysqli_num_rows($retval) == 1) {
@@ -117,10 +117,10 @@ if(isset($_GET["cancel"])){
 			$request_id = $row["id"];
 			$song_id = $row["song_id"];
 			
-            $sql2 = "SELECT * FROM sm_songs WHERE id = '{$song_id}' LIMIT 1";
+            $sql2 = "SELECT * FROM sm_songs WHERE id = '$song_id' LIMIT 1";
             $retval2 = mysqli_query( $conn, $sql2 );
 			while($row2 = mysqli_fetch_assoc($retval2)){
-		        $sql3 = "UPDATE sm_requests SET state = 'canceled' WHERE id = '{$request_id}'";
+		        $sql3 = "UPDATE sm_requests SET state = 'canceled' WHERE id = '$request_id'";
         		$retval3 = mysqli_query( $conn, $sql3 );
 				echo "Canceled @$user's request for ".trim($row2["title"]." ".$row2["subtitle"]);
 			}
@@ -143,7 +143,7 @@ if(isset($_GET["skip"])){
 		die("Good one, @$user, but only positive integers are allowed!");
 	}
 
-	$sql = "SELECT * FROM sm_requests WHERE broadcaster LIKE '{$broadcasterQuery}' AND state <> 'canceled' AND state <> 'skipped' AND state <> 'completed' ORDER BY request_time DESC LIMIT 1 OFFSET {$num}";
+	$sql = "SELECT * FROM sm_requests WHERE broadcaster LIKE '$broadcasterQuery' AND state <> 'canceled' AND state <> 'skipped' AND state <> 'completed' ORDER BY request_time DESC LIMIT 1 OFFSET $num";
         $retval = mysqli_query( $conn, $sql );
 
                 while($row = mysqli_fetch_assoc($retval)) {
@@ -171,7 +171,7 @@ if(isset($_GET["complete"])){
 		die("Good one, @$user, but only positive integers are allowed!");
 	}
 
-	$sql = "SELECT * FROM sm_requests WHERE broadcaster LIKE '{$broadcasterQuery}' AND state <> 'canceled' AND state <> 'skipped' AND state <> 'requested' ORDER BY request_time DESC LIMIT 1 OFFSET {$num}";
+	$sql = "SELECT * FROM sm_requests WHERE broadcaster LIKE '$broadcasterQuery' AND state <> 'canceled' AND state <> 'skipped' AND state <> 'requested' ORDER BY request_time DESC LIMIT 1 OFFSET $num";
         $retval = mysqli_query( $conn, $sql );
 
                 while($row = mysqli_fetch_assoc($retval)) {
@@ -206,7 +206,7 @@ if(isset($_GET["songid"]) && !empty($_GET["songid"])){
 	}
         //lookup by ID and request it
 
-        $sql = "SELECT * FROM sm_songs WHERE id = '{$song}' AND installed=1 ORDER BY title ASC, pack ASC";
+        $sql = "SELECT * FROM sm_songs WHERE id = '$song' AND installed=1 ORDER BY title ASC, pack ASC";
         $retval = mysqli_query( $conn, $sql );
 
 	if (mysqli_num_rows($retval) == 1) {

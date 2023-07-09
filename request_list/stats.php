@@ -428,7 +428,7 @@ switch(strtolower($_GET["data"])){
 
 		$sql = "SELECT requestor,COUNT(id) AS count 
 		FROM sm_requests 
-		WHERE state <> 'canceled' AND state <> 'skipped' AND LOWER(requestor) NOT IN(\"{$broadcaster}\") AND request_time > DATE_SUB('$timestamp', INTERVAL $StreamSessionLength HOUR) 
+		WHERE state <> 'canceled' AND state <> 'skipped' AND LOWER(requestor) NOT IN(\"$broadcaster\") AND request_time > DATE_SUB('$timestamp', INTERVAL $StreamSessionLength HOUR) 
 		GROUP BY requestor 
 		ORDER BY count DESC,requestor DESC 
 		LIMIT 5";
@@ -482,7 +482,7 @@ switch(strtolower($_GET["data"])){
 			if(empty($_GET["broadcaster"]) || strlen($_GET["broadcaster"]) < 3){die("Invalid broadcaster set!");}
 			$broadcaster = mysqli_real_escape_string($conn,$_GET["broadcaster"]);
 
-			$sql = "SELECT request_toggle FROM sm_broadcaster WHERE broadcaster = \"{$broadcaster}\"";
+			$sql = "SELECT request_toggle FROM sm_broadcaster WHERE broadcaster = \"$broadcaster\"";
         	$retval = mysqli_query( $conn, $sql );
 
 			if(mysqli_num_rows($retval) == 0){die("Broadcaster not found!");}

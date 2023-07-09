@@ -77,7 +77,7 @@ function rand_gradient(string $pack){
 function get_cancels_since($id,$oldid,$broadcaster){
 
 	global $conn;
-	$sql = "SELECT * FROM sm_requests WHERE id >= $oldid AND state =\"canceled\" AND broadcaster LIKE \"{$broadcaster}\" ORDER BY id ASC";
+	$sql = "SELECT * FROM sm_requests WHERE id >= $oldid AND state =\"canceled\" AND broadcaster LIKE \"$broadcaster\" ORDER BY id ASC";
 	$retval = mysqli_query( $conn, $sql ) or die(mysqli_error($conn));
 	$cancels = Array();
 	   while($row = mysqli_fetch_assoc($retval)) {
@@ -147,7 +147,7 @@ function get_completions_since($id,$oldid,$broadcaster){
 
         global $conn;
 		//$id=$id-50;
-        $sql = "SELECT id FROM sm_requests WHERE id >= $oldid AND state = \"completed\" AND broadcaster LIKE \"{$broadcaster}\"";
+        $sql = "SELECT id FROM sm_requests WHERE id >= $oldid AND state = \"completed\" AND broadcaster LIKE \"$broadcaster\"";
         $retval = mysqli_query( $conn, $sql ) or die(mysqli_error($conn));
         $completions = Array();
            while($row = mysqli_fetch_assoc($retval)) {
@@ -162,7 +162,7 @@ function get_completions_since($id,$oldid,$broadcaster){
 function get_skips_since($id,$oldid,$broadcaster){
 
 	global $conn;
-	$sql = "SELECT * FROM sm_requests WHERE id >= $oldid AND state =\"skipped\" AND broadcaster LIKE \"{$broadcaster}\" ORDER BY id ASC";
+	$sql = "SELECT * FROM sm_requests WHERE id >= $oldid AND state =\"skipped\" AND broadcaster LIKE \"$broadcaster\" ORDER BY id ASC";
 	$retval = mysqli_query( $conn, $sql ) or die(mysqli_error($conn));
 	$skips = Array();
 	   while($row = mysqli_fetch_assoc($retval)) {

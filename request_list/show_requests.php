@@ -203,7 +203,7 @@ if(!is_array($ids) || empty($ids)){
 	$oldid = min($ids);
 }
 	
-echo "<span id=\"oldid\" style=\"display:none;\">{$oldid}</span>";
+echo "<span id=\"oldid\" style=\"display:none;\">$oldid</span>";
 echo "
 </div>
 </html>";

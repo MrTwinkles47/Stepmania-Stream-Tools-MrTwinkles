@@ -155,7 +155,7 @@ function check_target_url(){
 function findFiles($directory) {
 	//find all directories in a directory and sort by modified time
     $dir_paths = array ();
-	foreach(glob("{$directory}/*", GLOB_ONLYDIR) as $filename) {
+	foreach(glob("$directory/*", GLOB_ONLYDIR) as $filename) {
         $dir_paths[] = $filename;
 	}
 	usort( $dir_paths, function( $a, $b ) { return filemtime($b) - filemtime($a); } );
@@ -332,7 +332,7 @@ foreach ($packDirs as $path){
 		$pack_name_old = strtolower(preg_replace('/\s+/', '_', trim($pack_name)));
 		$pack_name = strtolower(clean_filename($pack_name));
 		//look for any picture file in the pack directory
-		$img_path = glob("{$path}/*{jpg,JPG,jpeg,JPEG,png,PNG,gif,GIF,bmp,BMP}",GLOB_BRACE);
+		$img_path = glob("$path/*{jpg,JPG,jpeg,JPEG,png,PNG,gif,GIF,bmp,BMP}",GLOB_BRACE);
 		
 		if (isset($img_path) && !empty($img_path)){
 			if(count($img_path) > 1){

@@ -590,7 +590,7 @@ if(empty($cacheDir) || !file_exists($cacheDir)){
 	wh_log("StepMania song cache directory is empty or invalid. Check your config.php.".PHP_EOL);
 	die("StepMania song cache directory is empty or invalid. Check your config.php.");
 }
-foreach(glob("{$cacheDir}/*", GLOB_BRACE) as $file) {
+foreach(glob("$cacheDir/*", GLOB_BRACE) as $file) {
     $files[] = $file;
 }
 

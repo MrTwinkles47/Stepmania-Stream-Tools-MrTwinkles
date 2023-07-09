@@ -106,7 +106,7 @@ function check_cooldown($user){
 
     //scale cooldown as a function of the number of requests. X minutes per open request.	
     global $conn;
-    $sql0 = "SELECT * FROM sm_requests WHERE state <> 'canceled' AND requestor = '$user' AND request_time > DATE_SUB(NOW(), INTERVAL {$interval} MINUTE)";
+    $sql0 = "SELECT * FROM sm_requests WHERE state <> 'canceled' AND requestor = '$user' AND request_time > DATE_SUB(NOW(), INTERVAL $interval MINUTE)";
     $retval0 = mysqli_query( $conn, $sql0 );
     $numrows = mysqli_num_rows($retval0);
     if($numrows > 0 && floor($interval) > 1){
@@ -136,7 +136,7 @@ function recently_played($song_id,$interval){
 	global $conn;
 	$recently_played = FALSE;
     if(empty($interval) || !is_numeric($interval)){$interval = 1;}
-	$sql = "SELECT song_id FROM sm_songsplayed WHERE song_id={$song_id} AND lastplayed > DATE_SUB(NOW(), INTERVAL $interval HOUR)";
+	$sql = "SELECT song_id FROM sm_songsplayed WHERE song_id = $song_id AND lastplayed > DATE_SUB(NOW(), INTERVAL $interval HOUR)";
 	$retval = mysqli_query($conn,$sql);
 	if(mysqli_num_rows($retval) > 0){
 		$recently_played = TRUE;

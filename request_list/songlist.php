@@ -164,7 +164,7 @@ Feeling lucky, use <strong>!random</strong> for a random song or <strong>!top</s
 //get distinct packs and # of songs from db and set as array
 $packlist = array();
 if(strlen($query)>0){
-	$packlist_sql = "SELECT pack, COUNT(id) AS id FROM sm_songs WHERE installed = 1 AND (title LIKE '%{$query}%' OR subtitle LIKE '%{$query}%' OR artist LIKE '%{$query}%') GROUP BY pack";
+	$packlist_sql = "SELECT pack, COUNT(id) AS id FROM sm_songs WHERE installed = 1 AND (title LIKE '%$query%' OR subtitle LIKE '%$query%' OR artist LIKE '%$query%') GROUP BY pack";
 }else{
 	$packlist_sql = "SELECT pack, COUNT(id) AS id FROM sm_songs WHERE installed = 1 GROUP BY pack";
 }
@@ -202,7 +202,7 @@ $row = mysqli_fetch_array($max_date_sql);
 $updated_date = $row["max_date"];
 
 //find total number of pages of rows
-$total_pages_sql = "SELECT COUNT(*) FROM sm_songs WHERE installed = 1 and ((title LIKE '%{$query}%' OR subtitle LIKE '%{$query}%' OR artist LIKE '%{$query}%') AND (pack LIKE '%{$pack}'))";
+$total_pages_sql = "SELECT COUNT(*) FROM sm_songs WHERE installed = 1 and ((title LIKE '%$query%' OR subtitle LIKE '%$query%' OR artist LIKE '%$query%') AND (pack LIKE '%$pack'))";
 $result = mysqli_query($conn, $total_pages_sql);
 $total_rows = mysqli_fetch_array($result)[0];
 $total_pages = ceil($total_rows / $no_of_records_per_page);
@@ -272,11 +272,11 @@ MAX(case when sm_notedata.stepstype LIKE 'dance-double' AND sm_notedata.difficul
 FROM sm_songs
 JOIN sm_notedata ON sm_songs.id=sm_notedata.song_id
 WHERE stepstype NOT LIKE 'lights-cabinet' AND sm_songs.installed = 1 AND (
-				(title LIKE '%{$query}%' OR subtitle LIKE '%{$query}%' OR artist LIKE '%{$query}%') 
-				AND (pack LIKE '%{$pack}')
+				(title LIKE '%$query%' OR subtitle LIKE '%$query%' OR artist LIKE '%$query%') 
+				AND (pack LIKE '%$pack')
 				) 
 GROUP BY sm_songs.id 
-ORDER BY {$order} {$sort} LIMIT {$offset}, {$no_of_records_per_page}";
+ORDER BY $order $sort LIMIT $offset, $no_of_records_per_page";
 
 $result = mysqli_query($conn, $base_sql);
 
