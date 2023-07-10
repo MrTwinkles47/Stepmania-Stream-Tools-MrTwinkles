@@ -89,11 +89,15 @@ function check_length($maxRequests){
 
 function check_cooldown($user){
     global $cooldownMultiplier;
+    global $cooldownUser;
     global $maxRequests;
 
     //check config variables
     if(empty($cooldownMultiplier) || !is_numeric($cooldownMultiplier)){
-        $cooldownMultiplier = 0.4;
+        $cooldownMultiplier = 0.5; //minutes per open request
+    }
+    if(empty($cooldownUser) || !is_numeric($cooldownUser)){
+        $cooldownUser = 30; //seconds
     }
     if(empty($maxRequests) || !is_numeric($maxRequests)){
         $maxRequests = 10;
@@ -102,7 +106,8 @@ function check_cooldown($user){
     //check total length of requests, if over maxRequests, stop
     $length = check_length($maxRequests);
 
-    $interval = $cooldownMultiplier * $length;
+    // global cooldown + user cooldown
+    $interval = ($cooldownMultiplier * $length) + ($cooldownUser / 60);
 
     //scale cooldown as a function of the number of requests. X minutes per open request.	
     global $conn;
