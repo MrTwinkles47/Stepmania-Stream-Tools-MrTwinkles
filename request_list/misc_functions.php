@@ -189,6 +189,11 @@ function check_request_toggle($broadcaster,$user = NULL){
         return;
     }
 
+    if(check_user(0,$user)["banned"] == "true"){
+        //user is banned
+        die();
+    }
+
     $sql0 = "SELECT * FROM sm_broadcaster WHERE broadcaster LIKE '$broadcaster'";
     $retval0 = mysqli_query( $conn, $sql0 );
     $numrows = mysqli_num_rows($retval0);
