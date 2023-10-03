@@ -190,7 +190,7 @@ CREATE TABLE `sm_scores` (
   `freeze` decimal(10,6) DEFAULT NULL,
   `chaos` decimal(10,6) DEFAULT NULL,
   `notes` smallint(6) UNSIGNED DEFAULT NULL,
-  `taps_holds` smallint(6) DEFAULT NULL,
+  `taps_holds` smallint(6) UNSIGNED DEFAULT NULL,
   `jumps` smallint(6) DEFAULT NULL,
   `holds` smallint(6) DEFAULT NULL,
   `mines` smallint(6) UNSIGNED DEFAULT NULL,
