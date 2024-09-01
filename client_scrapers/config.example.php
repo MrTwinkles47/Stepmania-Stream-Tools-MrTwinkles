@@ -7,11 +7,6 @@ const CONFIG_VERSION = "1730";
 //Example: "America/New_York"
 $timezone = "";
 
-//Local timezone
-//Go here to find your timezone string: https://www.php.net/manual/en/timezones.php
-//Example: "America/New_York"
-$timezone = "";
-
 //Your absolute path to StepMania's song cache folder. This could be in the following locations:
 //SM5: "[AppData]/Roaming/StepMania 5/Cache/Songs"
 //SM5.1: "[AppData]/Roaming/StepMania 5.1/Cache/Songs"
