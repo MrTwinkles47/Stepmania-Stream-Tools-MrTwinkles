@@ -3,7 +3,7 @@
 require_once ('config.php');
 
 if(!isset($_GET["security_key"]) || $_GET["security_key"] != $security_key || empty($_GET["security_key"])){
-        die("Fuck off");
+        die("Error: Missing or incorrect security key.");
 }
 
 if(!isset($_GET["banuser"]) && !isset($_GET["whitelist"])){

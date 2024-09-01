@@ -3,7 +3,7 @@
 require_once ('config.php');
 
 if(!isset($_GET["security_key"]) || $_GET["security_key"] != $security_key || empty($_GET["security_key"])){
-    die("Fuck off");
+    die("Error: Missing or incorrect security key." . PHP_EOL);
 }
 
 if(!isset($_GET["broadcaster"]) && (!isset($_GET["stepstyle"]) || !isset($_GET["meter"]) || !isset($_GET["requesttoggle"]))){
@@ -14,12 +14,14 @@ $conn = mysqli_connect(dbhost, dbuser, dbpass, db);
 if(! $conn ) {die('Could not connect: ' . mysqli_error($conn));}
 $conn->set_charset("utf8mb4");
 
+$disableWords = array("0","-1","disable","off","remove","stop","false","no","get outta here");
+
 function add_broadcaster($broadcaster){
     
     global $conn;
 
 	$sql = "INSERT INTO sm_broadcaster (broadcaster, request_toggle) VALUES (\"$broadcaster\", \"ON\")";
-	$retval = mysqli_query( $conn, $sql );
+	mysqli_query( $conn, $sql );
 	$the_id = mysqli_insert_id($conn);
 
 	return($the_id);
@@ -81,7 +83,7 @@ function toggle_requests($broadcaster,$message){
             }
 
                 $sql = "UPDATE sm_broadcaster SET request_toggle=\"$value\", message=\"$message\" WHERE id=\"$id\" LIMIT 1";
-                $retval = mysqli_query( $conn, $sql );
+                mysqli_query( $conn, $sql );
 
             echo ("$response");
 
@@ -92,6 +94,7 @@ function toggle_requests($broadcaster,$message){
 function limit_stepstype($broadcaster,$stepstype){
 
     global $conn;
+    global $disableWords;
 
     $sql0 = "SELECT * FROM sm_broadcaster WHERE broadcaster = \"$broadcaster\"";
     $retval0 = mysqli_query( $conn, $sql0 );
@@ -112,15 +115,15 @@ function limit_stepstype($broadcaster,$stepstype){
         }elseif(empty($stepstype) && !empty($stepstype_db)){
             $response = "Stepstype currently limited to $stepstype_db";
         }elseif(!empty($stepstype)){
-            if($stepstype == "-1"|| $stepstype == "disable" || $stepstype == "off" || $stepstype == "remove" || $stepstype == "stop"){
+            if(in_array($stepstype,$disableWords)){
                 $response = "Removing steps-type limit.";
                 $sql = "UPDATE sm_broadcaster SET stepstype=\"\" WHERE id=\"$id\" LIMIT 1";
-                $retval = mysqli_query( $conn, $sql );
+                mysqli_query( $conn, $sql );
             }elseif($stepstype == "singles" || $stepstype == "doubles"){ 
                 $response = "Changing steps-type to $stepstype";
                 $stepstype = "dance-".substr($stepstype,0,-1);
                 $sql = "UPDATE sm_broadcaster SET stepstype=\"$stepstype\" WHERE id=\"$id\" LIMIT 1";
-                $retval = mysqli_query( $conn, $sql );
+                mysqli_query( $conn, $sql );
             }else{
                 $response = "Invalid steps-type. Useage: \"singles\", \"doubles\", or \"off\".";
             }  
@@ -133,6 +136,7 @@ function limit_stepstype($broadcaster,$stepstype){
 function change_meter($broadcaster,$meter){
 
     global $conn;
+    global $disableWords;
 
     $sql0 = "SELECT * FROM sm_broadcaster WHERE broadcaster = \"$broadcaster\"";
     $retval0 = mysqli_query( $conn, $sql0 );
@@ -153,14 +157,14 @@ function change_meter($broadcaster,$meter){
         }elseif(empty($meter) && !empty($meter_db)){
             $response = "Difficulty meter currently limited to $meter_db";
         }elseif(!empty($meter)){
-            if($meter == "-1" || $meter == "disable" || $meter == "off" || $meter == "remove" || $meter == "stop"){
+            if(in_array($meter,$disableWords)){
                 $response = "Removing difficulty meter limit.";
                 $sql = "UPDATE sm_broadcaster SET meter_max=\"\" WHERE id=\"$id\" LIMIT 1";
-                $retval = mysqli_query( $conn, $sql );
+                mysqli_query( $conn, $sql );
             }elseif(is_numeric($meter)){
                 $response = "Changing max difficulty meter to $meter";
                 $sql = "UPDATE sm_broadcaster SET meter_max=\"$meter\" WHERE id=\"$id\" LIMIT 1";
-                $retval = mysqli_query( $conn, $sql );
+                mysqli_query( $conn, $sql );
             }
         }            
             echo "$response";

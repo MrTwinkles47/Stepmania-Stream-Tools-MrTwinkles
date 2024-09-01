@@ -4,7 +4,7 @@ require_once ('config.php');
 require_once ('misc_functions.php');
 
 if(!isset($_GET["security_key"]) || $_GET["security_key"] != $security_key || empty($_GET["security_key"])){
-    die("Fuck off");
+    die("Error: Missing or incorrect security key.");
 }
 
 if(!isset($_GET["song"]) && !isset($_GET["songid"]) && !isset($_GET["cancel"]) && !isset($_GET["skip"]) && !isset($_GET["complete"])){
