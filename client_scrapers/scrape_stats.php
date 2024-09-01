@@ -2,7 +2,6 @@
 
 /////
 //SM5 Stats.xml scraper
-//Call this scraper each time the Stats.xml file(s) are modified.
 //The scraper will not run with out specifying at least one profile ID in config.php! 
 //Run this script in the background while you play. Each time the Stats.xml file changes,
 //SMR will recieve the data it needs to auto-complete requests.
@@ -78,23 +77,37 @@ function check_environment(){
 	}
 	
 	//check php version and dump to log
-	switch(version_compare(PHP_VERSION,'7.4.26')){
+	switch(version_compare(PHP_VERSION,'7.4.33')){
+		case 0:
+			//version equal
+			break;
 		case -1:
 			//version too low
 			wh_log("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
-			die("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
+			die("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION . PHP_EOL);
 			break;
 		case 1:
 			//version higher than test
-			if(version_compare(PHP_VERSION,'8.0.0','>=')){
-				//php8 is not supported....yet
-				wh_log("PHP 8 is not supported! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
-				die("PHP 8 is not supported! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
+			switch(version_compare(PHP_VERSION,'8.0.0')){
+				//php 8 support is in beta
+				case 0:
+					//version equal
+				case -1:
+					//version lower
+					//case for some PHP 7.4 version greater than 7.4.33
+					break;
+				case 1:
+					//version higher
+					if(version_compare(PHP_VERSION, '8.3.0','<')){
+						wh_log("PHP 8 support is in BETA! Please install the latest version of PHP 8.3. Your version is: " . PHP_VERSION);
+						die("PHP 8 support is in BETA! Please install the latest version of PHP 8.3. Your version is: " . PHP_VERSION . PHP_EOL);
+					}else{
+						wh_log("PHP 8 support is in BETA! Please report any bugs!");
+						echo("PHP 8 support is in BETA! Please report any bugs!" . PHP_EOL);
+					}
+					break;
 			}
-			//full steam ahead!	
 			break;
-		default:
-			//versions match!
 	}
 
 	//set timezone
@@ -269,10 +282,12 @@ function parseXmlErrors($errors, string $xml_file){
 	}
 	//write back changes to a new file
 	//$xmlStr = implode(PHP_EOL,$xmlArray);
-	$xmlFileFixed = str_replace($statsXMLfilename,$statsXMLfilename.".fixed",$xml_file);
+	$xmlFileFixed = str_replace($statsXMLfilename,$statsXMLfilename . ".fixed",$xml_file);
 	if(file_exists($xmlFileFixed)){
 		//delete existing file
-		unlink($xmlFileFixed);
+		if(!unlink($xmlFileFixed)){
+			wh_log("Failed to delete existing \"fixed\" Stats XML file. Maybe a permissions error?");
+		}
 	}
 	if(file_put_contents($xmlFileFixed,implode('',$xmlArray)) === FALSE){
 		//failed to write file
@@ -425,7 +440,7 @@ function statsXMLtoArray (array $file){
 				$num_played = (string)$high_score_lists->NumTimesPlayed; //integer count of times a song is played
 				$last_played = (string)$high_score_lists->LastPlayed; //date the song/difficulty was last played
 
-				$dateTimeHS = array(null);
+				$dateTimeHS = array();
 				$highScores = array();
 
 				foreach ($high_score_lists->HighScore as $high_score){				
@@ -437,14 +452,16 @@ function statsXMLtoArray (array $file){
 				//last_played date for the song isn't always the latest due to not having a time element.
 				//assume that, if the most recent highscore is greater than the lasted time played date,
 				//we can replace the last_played date with the date/time from the highscore
-				$dateTimeMax = max($dateTimeHS);
-				if (strtotime($dateTimeMax) > strtotime($last_played)){
-					$last_played = $dateTimeMax;
+				if(!empty($dateTimeHS)){
+					$dateTimeMax = max($dateTimeHS);
+					if (strtotime($dateTimeMax) > strtotime($last_played)){
+						$last_played = $dateTimeMax;
+					}
 				}
 				
 				if (!empty($highScores)){
 					foreach ($highScores as $highScoreSingle){
-						if((string)strtotime($highScoreSingle->DateTime) > strtotime(date("Y-m-j",strtotime($timestampLastPlayed)))){
+						if(strtotime($highScoreSingle->DateTime) > strtotime(date("Y-m-j",strtotime($timestampLastPlayed)))){
 							//highscore date/time is greater than the stored lastPlayed timestamp, add it to the array
 							$statsHighScores[] = array('DisplayName' => $display_name, 'PlayerGuid' => $playerGuid, 'ProfileID' => $profileID, 'ProfileType' => $profileType, 'SongDir' => $song_dir, 'StepsType' => $stepsType, 'Difficulty' => $difficulty, 'ChartHash' => $chartHash, 'StepsDescription' => $stepsDescription, 'NumTimesPlayed' => $num_played, 'LastPlayed' => $last_played, 'HighScore' => $highScoreSingle);
 						}
@@ -487,7 +504,7 @@ function curlPost(string $postSource, array $postData){
 	unset($postData,$jsonArray); //memory leak
 	wh_log ("Creating JSON took: " . round(microtime(true) - $jsMicro,3) . " secs.");
 	$errorJson = json_last_error();
-	if($errorJson != "JSON_ERROR_NONE"){
+	if($errorJson !== JSON_ERROR_NONE){
 		//there was an error with the json string
 		wh_log(json_last_error_msg());
 		die(json_last_error_msg().PHP_EOL);
@@ -616,9 +633,13 @@ for (;;){
 		$file['ftime'] = $file['mtime'];
 	}
 
-	echo "."; //what's a group of dots called?
 	clearstatcache(); //file times are cached, this clears it
-	sleep($frequency); //wait for # seconds
+	//sleep($frequency); //wait for # seconds
+	for($y=0; $y<=$frequency; $y++){
+		sleep(1);
+		echo "."; //what's a group of dots called?
+	}
+	echo "\33[2K\r"; // clears current line and moves cursor to beginning
 }
 exit();
 

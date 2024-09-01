@@ -5,7 +5,6 @@
 // It cleans [TAGS] from the song titles and it saves a "search ready" version of each song title (without spaces or special characters) to the "strippedtitle" column.
 // This way you can have another script search/parse your entire song library - for example to make song requests.
 // You only need to re-run this script any time you add new songs and Stepmania has a chance to build its cache. It'll skip songs that already exist in the DB.
-// The same exact song title is allowed to exist in different packs.
 
 // Configuration
 
@@ -61,23 +60,37 @@ function check_environment(){
 	}
 
 	//check php version and dump to log
-	switch(version_compare(PHP_VERSION,'7.4.26')){
+	switch(version_compare(PHP_VERSION,'7.4.33')){
+		case 0:
+			//version equal
+			break;
 		case -1:
 			//version too low
 			wh_log("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
-			die("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
+			die("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION . PHP_EOL);
 			break;
 		case 1:
 			//version higher than test
-			if(version_compare(PHP_VERSION,'8.0.0','>=')){
-				//php8 is not supported....yet
-				wh_log("PHP 8 is not supported! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
-				die("PHP 8 is not supported! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
+			switch(version_compare(PHP_VERSION,'8.0.0')){
+				//php 8 support is in beta
+				case 0:
+					//version equal
+				case -1:
+					//version lower
+					//case for some PHP 7.4 version greater than 7.4.33
+					break;
+				case 1:
+					//version higher
+					if(version_compare(PHP_VERSION, '8.3.0','<')){
+						wh_log("PHP 8 support is in BETA! Please install the latest version of PHP 8.3. Your version is: " . PHP_VERSION);
+						die("PHP 8 support is in BETA! Please install the latest version of PHP 8.3. Your version is: " . PHP_VERSION . PHP_EOL);
+					}else{
+						wh_log("PHP 8 support is in BETA! Please report any bugs!");
+						echo("PHP 8 support is in BETA! Please report any bugs!" . PHP_EOL);
+					}
+					break;
 			}
-			//full steam ahead!	
 			break;
-		default:
-			//versions match!
 	}
 
 	//set timezone
@@ -318,9 +331,9 @@ function parseNotedata($file) {
 				if( strpos($lines['#DISPLAYBPM'],':') > 0){
 					//deal with split bpm values
 					$display_bpmSplit = explode($delimiter,$lines['#DISPLAYBPM']);
-					$lines['#DISPLAYBPM'] = intval(round(min($display_bpmSplit),0)) . "-" . intval(round(max($display_bpmSplit),0));
+					$lines['#DISPLAYBPM'] = intval(round(floatval(min($display_bpmSplit)),0)) . "-" . intval(round(floatval(max($display_bpmSplit)),0));
 				}else{
-					$lines['#DISPLAYBPM'] = intval(round($lines['#DISPLAYBPM'],0));
+					$lines['#DISPLAYBPM'] = intval(round(floatval($lines['#DISPLAYBPM']),0));
 				}
 								
 				$notedata_array[] = array('chartname' => $lines['#CHARTNAME'], 'stepstype' => $lines['#STEPSTYPE'], 'description' => $lines['#DESCRIPTION'], 'chartstyle' => $lines['#CHARTSTYLE'], 'charthash' => $lines['#CHARTHASH'], 'difficulty' => $lines['#DIFFICULTY'], 'meter' => $lines['#METER'], 'radarvalues' => $lines['#RADARVALUES'], 'credit' => $lines['#CREDIT'], 'displaybpm' => $lines['#DISPLAYBPM'], 'stepfilename' => $lines['#STEPFILENAME']);
@@ -500,7 +513,7 @@ function get_progress($timeChunkStart, $currentChunk, $totalChunks, array $chunk
 }
 
 function parseJsonErrors(string $error, array $jsonArray){
-	if($error == "JSON_ERROR_UTF8" || $error == 5){
+	if($error == JSON_ERROR_UTF8){
 		//json error because of bad utf-8
 		echo json_last_error_msg().PHP_EOL;
 		echo "One of these files has an error. Correct the special character in the song folder name and re-run the script.".PHP_EOL;
@@ -535,7 +548,7 @@ function curlPost(string $postSource, array $postData){
 	//encode array as json
 	$post = json_encode($jsonArray);
 	$errorJson = json_last_error();
-	if($errorJson != "JSON_ERROR_NONE"){
+	if($errorJson != JSON_ERROR_NONE){
 		//there was an error with the json string
 		parseJsonErrors($errorJson,$jsonArray);
 		die();
@@ -687,17 +700,5 @@ if($i > 0){
 echo (PHP_EOL . "Total time: ". round((microtime(true) - $microStart)/60,1) . " mins." . PHP_EOL);
 wh_log("Total time: ". round((microtime(true) - $microStart)/60,1) . " mins.");
 
-//
-
-// Let's clean up the sm_songs db, removing records that are not installed, have never been requested, never played, or don't have a recorded score
-	//echo "Purging song database and cleaning up...";
-	//$sql_purge = "DELETE FROM sm_songs 
-	//			WHERE NOT EXISTS(SELECT NULL FROM sm_requests WHERE sm_requests.song_id = sm_songs.id LIMIT 1) AND NOT EXISTS (SELECT NULL FROM sm_scores WHERE sm_scores.song_id = sm_songs.id LIMIT 1) AND NOT EXISTS (SELECT NULL FROM sm_songsplayed WHERE sm_songsplayed.song_id = sm_songs.id LIMIT 1) AND sm_songs.installed<>1";
-	//if (!mysqli_query($conn, $sql_purge)) {
-	//		echo "Error: " . $sql_purge . "\n" . mysqli_error($conn);
-	//	}
-
-//
 exit();
-
 ?>
