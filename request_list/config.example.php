@@ -30,10 +30,14 @@ $broadcasters = array(
 						'mrtwinkles'    => 	'MRT'
 					 );
 
-//User request cooldown interval. This value is a multiplier of active global requests.
+//Global request cooldown interval. This value is a multiplier of active global requests.
 //Ex: cooldown minutes = (number of active requests) * ($cooldownMultiplier)
 //A value of 0.5 equates to 30 seconds of cooldown per active global request.
-$cooldownMultiplier = 0.4;
+$cooldownMultiplier = 0.5;
+
+//User request cooldown. This value is the number of seconds each user must wait between requests.
+//The user cooldown is added to the global cooldown.
+$cooldownUser = 30;
 
 //Max requests. Maximum active requests before requests are halted.
 //This number should be 10 or less.

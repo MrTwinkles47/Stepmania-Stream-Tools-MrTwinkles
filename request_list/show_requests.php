@@ -25,7 +25,7 @@ function clean_filename(string $filename){
 }
    
 function format_pack($pack,$requestor){
-	$length = 40;
+	$length = 38;
 	$length = $length - (strlen($requestor) * 0.8);
 
  	$pack = str_ireplace("Dance Dance Revolution","DDR",$pack);
@@ -34,11 +34,8 @@ function format_pack($pack,$requestor){
 	$pack = str_ireplace("DancingStage","DS",$pack);
 	$pack = str_ireplace("In The Groove","ITG",$pack);
 	$pack = str_ireplace("InTheGroove","ITG",$pack);
-	//$pack = str_ireplace("Ben Speirs","BS",$pack);
-	//$pack = str_ireplace("JBEAN Exclusives","JBEAN...",$pack);
 	$pack = preg_replace("/(\(.*\).\(.*\))$/","",$pack,1);
 	if(strlen($pack) > $length){
-		//$pack = trim(substr($pack,0,18))."...".trim(substr($pack,strlen($pack)-7));
 		$separator = "...";
 		$maxLength = $length - strlen($separator);
 		$startTrunc = $maxLength / 2;
@@ -71,8 +68,8 @@ function rand_gradient(string $pack){
 	}
   
     //Giving values to the linear gradiant.
-    //$background = "linear-gradient(${direction}deg, rgba(${r1},${g1},${b1},${a1}), rgba(${r2},${g2},${b2},${a2}))";
-	$background = "linear-gradient(${direction}deg, rgb({$colorRGB[0][0]},{$colorRGB[0][1]},{$colorRGB[0][2]}), rgb({$colorRGB[1][0]},{$colorRGB[1][1]},{$colorRGB[1][2]}))";
+		$background = "linear-gradient(".$direction."deg, rgb({$colorRGB[0][0]},{$colorRGB[0][1]},{$colorRGB[0][2]}), rgb({$colorRGB[1][0]},{$colorRGB[1][1]},{$colorRGB[1][2]}))";
+
 
     return (string)$background;
 }
@@ -184,9 +181,9 @@ echo '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min
 		echo $difficulty;
 		echo $stepstype;
 		if($pack_img){
-			echo "<img class=\"songrow-bg\" src=\"{$pack_img}\" />";
+			echo "<img class=\"songrow-bg\" src=\"".$pack_img."\" />";
 		}
-		echo "<span id=\"request_${request_id}_time\" style=\"display:none;\">$request_time</span>
+		echo "<span id=\"request_".$request_id."_time\" style=\"display:none;\">$request_time</span>
 		</div>";
 		if(isset($_GET['admin'])){
 			echo "<div class=\"admindiv\" id=\"requestadmin_".$request_id."\">
@@ -206,8 +203,8 @@ if(!is_array($ids) || empty($ids)){
 }else{
 	$oldid = min($ids);
 }
-	
-echo "<span id=\"oldid\" style=\"display:none;\">{$oldid}</span>";
+
+echo "<span id=\"oldid\" style=\"display:none;\">$oldid</span>";
 echo "
 </div>
 </html>";

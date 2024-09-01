@@ -45,8 +45,8 @@ if($domain == 'smrequests.com' || $domain == 'smrequests.dev'){
 		background-color:#303030;
 	}
 </style>
-<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.js"></script>
-<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 <script>
 $(document).ready(function(){
   $("tr").click(function(){
@@ -164,9 +164,9 @@ Feeling lucky, use <strong>!random</strong> for a random song or <strong>!top</s
 //get distinct packs and # of songs from db and set as array
 $packlist = array();
 if(strlen($query)>0){
-	$packlist_sql = "SELECT pack, COUNT(id) AS id FROM sm_songs WHERE installed = 1 AND (title LIKE '%{$query}%' OR subtitle LIKE '%{$query}%' OR artist LIKE '%{$query}%') GROUP BY pack";
+	$packlist_sql = "SELECT pack, COUNT(id) AS id FROM sm_songs WHERE installed = 1 AND (title LIKE '%$query%' OR subtitle LIKE '%$query%' OR artist LIKE '%$query%') GROUP BY pack ORDER BY pack ASC";
 }else{
-	$packlist_sql = "SELECT pack, COUNT(id) AS id FROM sm_songs WHERE installed = 1 GROUP BY pack";
+	$packlist_sql = "SELECT pack, COUNT(id) AS id FROM sm_songs WHERE installed = 1 GROUP BY pack ORDER BY pack ASC";
 }
 $result = mysqli_query($conn, $packlist_sql);
 while( $row = mysqli_fetch_assoc($result)){
@@ -202,7 +202,7 @@ $row = mysqli_fetch_array($max_date_sql);
 $updated_date = $row["max_date"];
 
 //find total number of pages of rows
-$total_pages_sql = "SELECT COUNT(*) FROM sm_songs WHERE installed = 1 and ((title LIKE '%{$query}%' OR subtitle LIKE '%{$query}%' OR artist LIKE '%{$query}%') AND (pack LIKE '%{$pack}'))";
+$total_pages_sql = "SELECT COUNT(*) FROM sm_songs WHERE installed = 1 and ((title LIKE '%$query%' OR subtitle LIKE '%$query%' OR artist LIKE '%$query%') AND (pack LIKE '%$pack'))";
 $result = mysqli_query($conn, $total_pages_sql);
 $total_rows = mysqli_fetch_array($result)[0];
 $total_pages = ceil($total_rows / $no_of_records_per_page);
@@ -272,11 +272,11 @@ MAX(case when sm_notedata.stepstype LIKE 'dance-double' AND sm_notedata.difficul
 FROM sm_songs
 JOIN sm_notedata ON sm_songs.id=sm_notedata.song_id
 WHERE stepstype NOT LIKE 'lights-cabinet' AND sm_songs.installed = 1 AND (
-				(title LIKE '%{$query}%' OR subtitle LIKE '%{$query}%' OR artist LIKE '%{$query}%') 
-				AND (pack LIKE '%{$pack}')
+				(title LIKE '%$query%' OR subtitle LIKE '%$query%' OR artist LIKE '%$query%') 
+				AND (pack LIKE '%$pack')
 				) 
 GROUP BY sm_songs.id 
-ORDER BY {$order} {$sort} LIMIT {$offset}, {$no_of_records_per_page}";
+ORDER BY $order $sort LIMIT $offset, $no_of_records_per_page";
 
 $result = mysqli_query($conn, $base_sql);
 
@@ -711,7 +711,7 @@ mysqli_close($conn);
 </div>
 
 <div class="w3-padding-small w3-container w3-theme w3-center">
-SMRequests is a song request and hosted songlist tool for live streaming StepMania 5. Check out the current project on <a href="https://github.com/MrTwinkles47/Stepmania-Stream-Tools-MrTwinkles" target="_blank">Github</a>. Thanks to <a href="https://twitch.tv/ddrdave" target="_blank">ddrDave</a> for the original project and concept.
+SMRequests is a song request and hosted songlist tool for live streaming StepMania 5 (and its variants). Check out the current project on <a href="https://github.com/MrTwinkles47/Stepmania-Stream-Tools-MrTwinkles" target="_blank">Github</a>. Thanks to <a href="https://twitch.tv/ddrdave" target="_blank">ddrDave</a> for the original project and concept.
 <?php echo $hostingFooter.PHP_EOL; ?>
 </div>
 

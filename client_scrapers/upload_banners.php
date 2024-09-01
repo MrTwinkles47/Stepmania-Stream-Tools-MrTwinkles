@@ -2,7 +2,7 @@
 
 //
 //PHP StepMania song pack banner uploader
-//This script finds each banner image for each song group/pack and uploads it via POST to the server
+//This script finds each banner image for each song group/pack and uploads it to SMR.
 //'file_uploads' must be enabled on the server for this script to work correctly
 //
 
@@ -32,11 +32,15 @@ echo "" . PHP_EOL;
 wh_log("Starting SMRequests v$versionClient Song Pack Banner Uploader...");
 //
 
-if(file_exists(__DIR__."/config.php") && is_file(__DIR__."/config.php")){
-	require_once ('config.php');
-}else{
+if(!file_exists(__DIR__."/config.php") && !is_file(__DIR__."/config.php")){
 	wh_log("config.php file not found! You must configure these scripts before running. You can find an example config.php file at config.example.php.");
 	die("config.php file not found! You must configure these scripts before running. You can find an example config.php file at config.example.php.".PHP_EOL);
+}else{
+	require_once ('config.php');
+	if(CONFIG_VERSION != $versionClient || empty(CONFIG_VERSION) || empty($versionClient)){
+		wh_log("config.php file is from a previous version! You must build a new config.php from the current config.example.php file. Exiting...");
+		die("config.php file is from a previous version! You must build a new config.php from the current config.example.php file. Exiting...".PHP_EOL);
+	}
 }
 
 function check_environment(){
@@ -51,23 +55,37 @@ function check_environment(){
 	}
 	
 	//check php version and dump to log
-	switch(version_compare(PHP_VERSION,'7.4.26')){
+	switch(version_compare(PHP_VERSION,'7.4.33')){
+		case 0:
+			//version equal
+			break;
 		case -1:
 			//version too low
 			wh_log("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
-			die("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
+			die("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION . PHP_EOL);
 			break;
 		case 1:
 			//version higher than test
-			if(version_compare(PHP_VERSION,'8.0.0','>=')){
-				//php8 is not supported....yet
-				wh_log("PHP 8 is not supported! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
-				die("PHP 8 is not supported! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION );
+			switch(version_compare(PHP_VERSION,'8.0.0')){
+				//php 8 support is in beta
+				case 0:
+					//version equal
+				case -1:
+					//version lower
+					//case for some PHP 7.4 version greater than 7.4.33
+					break;
+				case 1:
+					//version higher
+					if(version_compare(PHP_VERSION, '8.3.0','<')){
+						wh_log("PHP 8 support is in BETA! Please install the latest version of PHP 8.3. Your version is: " . PHP_VERSION);
+						die("PHP 8 support is in BETA! Please install the latest version of PHP 8.3. Your version is: " . PHP_VERSION . PHP_EOL);
+					}else{
+						wh_log("PHP 8 support is in BETA! Please report any bugs!");
+						echo("PHP 8 support is in BETA! Please report any bugs!" . PHP_EOL);
+					}
+					break;
 			}
-			//full steam ahead!	
 			break;
-		default:
-			//versions match!
 	}
 
 	//set timezone
@@ -151,7 +169,7 @@ function check_target_url(){
 function findFiles($directory) {
 	//find all directories in a directory and sort by modified time
     $dir_paths = array ();
-	foreach(glob("{$directory}/*", GLOB_ONLYDIR) as $filename) {
+	foreach(glob("$directory/*", GLOB_ONLYDIR) as $filename) {
         $dir_paths[] = $filename;
 	}
 	usort( $dir_paths, function( $a, $b ) { return filemtime($b) - filemtime($a); } );
@@ -290,7 +308,12 @@ $banners_copied = $notFoundBanners = $cPacks = 0;
 $fileSizeMax = 5242880; //5MB
 
 // find all the pack/group folders
-$pack_dir = findFiles($songsDir);
+//songDir valid?
+if(empty($songsDir) || !file_exists($songsDir)){
+	wh_log("StepMania song directory is empty or invalid. Check your config.php.".PHP_EOL);
+	die("StepMania song directory is empty or invalid. Check your config.php.");
+}
+$packDirs = findFiles($songsDir);
 
 //add any additional songs folder(s)
 if(!empty($addSongsDir)){
@@ -298,11 +321,11 @@ if(!empty($addSongsDir)){
 		$addSongsDir = array($addSongsDir);
 	}
 	foreach($addSongsDir as $directory){
-		$pack_dir[] = findFiles($directory);
+		$packDirs[] = findFiles($directory);
 	}
 }
 
-$cPacks = count($pack_dir);
+$cPacks = count($packDirs);
 
 if ($cPacks == 0){
 	wh_log("No pack/group folders found. Your StepMania /Songs directory may be located in \"AppData\""); 
@@ -311,7 +334,7 @@ if ($cPacks == 0){
 
 $img_arr = array();
 
-foreach ($pack_dir as $path){
+foreach ($packDirs as $path){
 	
 	$pack_name = $img_path = "";
 	//get pack name from folder
@@ -323,7 +346,7 @@ foreach ($pack_dir as $path){
 		$pack_name_old = strtolower(preg_replace('/\s+/', '_', trim($pack_name)));
 		$pack_name = strtolower(clean_filename($pack_name));
 		//look for any picture file in the pack directory
-		$img_path = glob("{$path}/*{jpg,JPG,jpeg,JPEG,png,PNG,gif,GIF,bmp,BMP}",GLOB_BRACE);
+		$img_path = glob("$path/*{jpg,JPG,jpeg,JPEG,png,PNG,gif,GIF,bmp,BMP}",GLOB_BRACE);
 		
 		if (isset($img_path) && !empty($img_path)){
 			if(count($img_path) > 1){
@@ -334,9 +357,10 @@ foreach ($pack_dir as $path){
 				$img_path = $img_path[0];
 			}
 			//check for filesize
-			if (filesize($img_path) > $fileSizeMax){
-				echo $pack_name."'s image file is too large (max size: ". $fileSizeMax / 1024^2 ."MB)!" . PHP_EOL;
-				wh_log($pack_name."'s image file is too large (max size: ". $fileSizeMax / 1024^2 ."MB)!");
+			$imgFileSize = filesize($img_path);
+			if ($imgFileSize == FALSE || $imgFileSize > $fileSizeMax){
+				echo($pack_name . "'s image file is too large: " . (round($imgFileSize / 1024 / 1024,2)) . "MB. Max size: " . ($fileSizeMax / 1024 / 1024) . "MB!" . PHP_EOL);
+				wh_log($pack_name . "'s image file is too large: " . (round($imgFileSize / 1024 / 1024,2)) . "MB. Max size: " . ($fileSizeMax / 1024 / 1024) . "MB!");
 			}else{
 				$img_arr[] = array('img_path' => $img_path,'pack_name' => $pack_name,'pack_name_old' => $pack_name_old);
 			}

@@ -2,7 +2,6 @@
 
 /////
 //SM5 Stats.xml scraper
-//Call this scraper each time the Stats.xml file(s) are modified.
 //The scraper will not run with out specifying at least one profile ID in config.php! 
 //Run this script in the background while you play. Each time the Stats.xml file changes,
 //SMR will recieve the data it needs to auto-complete requests.
@@ -17,9 +16,9 @@ $versionClient = get_version();
 cli_set_process_title("SMRequests v$versionClient | StepMania Stats.XML Scraper");
 
 //process command arguments
-$autoRun = TRUE;
 $frequency = 5;
 $fileTime = "";
+$statsXMLfilename = "Stats.xml";
 
 if ($argc > 1){
 	$argv = array_splice($argv,1);
@@ -53,15 +52,16 @@ wh_log("Starting SMRequests v$versionClient StepMania Stats.XML Scraper...");
 //
 
 //Config
-if(file_exists(__DIR__."/config.php") && is_file(__DIR__."/config.php")){
-	require_once ('config.php');
-}else{
+if(!file_exists(__DIR__."/config.php") && !is_file(__DIR__."/config.php")){
 	wh_log("config.php file not found! You must configure these scripts before running. You can find an example config.php file at config.example.php.");
 	die("config.php file not found! You must configure these scripts before running. You can find an example config.php file at config.example.php.".PHP_EOL);
+}else{
+	require_once ('config.php');
+	if(CONFIG_VERSION != $versionClient || empty(CONFIG_VERSION) || empty($versionClient)){
+		wh_log("config.php file is from a previous version! You must build a new config.php from the current config.example.php file. Exiting...");
+		die("config.php file is from a previous version! You must build a new config.php from the current config.example.php file. Exiting...".PHP_EOL);
+	}
 }
-
-//check for offline mode in the config
-//if ($autoRun == TRUE && $offlineMode == TRUE){die("[-auto] and \"Offline Mode\" cannot be set at the same time!" . PHP_EOL);}
 
 //////
 
@@ -77,23 +77,37 @@ function check_environment(){
 	}
 	
 	//check php version and dump to log
-	switch(version_compare(PHP_VERSION,'7.4.26')){
+	switch(version_compare(PHP_VERSION,'7.4.33')){
+		case 0:
+			//version equal
+			break;
 		case -1:
 			//version too low
 			wh_log("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
-			die("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
+			die("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION . PHP_EOL);
 			break;
 		case 1:
 			//version higher than test
-			if(version_compare(PHP_VERSION,'8.0.0','>=')){
-				//php8 is not supported....yet
-				wh_log("PHP 8 is not supported! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
-				die("PHP 8 is not supported! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
+			switch(version_compare(PHP_VERSION,'8.0.0')){
+				//php 8 support is in beta
+				case 0:
+					//version equal
+				case -1:
+					//version lower
+					//case for some PHP 7.4 version greater than 7.4.33
+					break;
+				case 1:
+					//version higher
+					if(version_compare(PHP_VERSION, '8.3.0','<')){
+						wh_log("PHP 8 support is in BETA! Please install the latest version of PHP 8.3. Your version is: " . PHP_VERSION);
+						die("PHP 8 support is in BETA! Please install the latest version of PHP 8.3. Your version is: " . PHP_VERSION . PHP_EOL);
+					}else{
+						wh_log("PHP 8 support is in BETA! Please report any bugs!");
+						echo("PHP 8 support is in BETA! Please report any bugs!" . PHP_EOL);
+					}
+					break;
 			}
-			//full steam ahead!	
 			break;
-		default:
-			//versions match!
 	}
 
 	//set timezone
@@ -242,7 +256,10 @@ function fixEncoding(string $line){
 	return (string) $line;
 }
 
-function parseXmlErrors($errors,array $xmlArray){
+function parseXmlErrors($errors, string $xml_file){
+	global $statsXMLfilename;
+	//open xml as generic file as an array
+	$xmlArray = file($xml_file);
 	foreach ($errors as $error){
 		if ($error->code == 9){
 			//error code: 9 is "Invalid UTF-8 encoding detected"
@@ -251,7 +268,7 @@ function parseXmlErrors($errors,array $xmlArray){
 			wh_log("Oh look! StepMania left us invalid UTF-8 characters in an XML file. I recommend removing all special characters from this song's directory name!");
 			//get line number of the invalid character(s)
 			$lineNo = $error->line - 1;
-			//open file, fix encoding, and write a new line
+			//fix encoding, and write a new line
 			echo "Line ".$lineNo.": [".str_replace(array("\n","\r"),'',$xmlArray[$lineNo])."] Fixing (Temporarily)...".PHP_EOL;
 			wh_log("Line ".$lineNo.": [".str_replace(array("\n","\r"),'',$xmlArray[$lineNo])."] Fixing (Temporarily)...");
 			$xmlArray[$lineNo] = fixEncoding($xmlArray[$lineNo]);
@@ -260,22 +277,37 @@ function parseXmlErrors($errors,array $xmlArray){
 			//other errors haven't really popped up, so here, have the raw output!
 			wh_log(implode(PHP_EOL,(array) $errors)); 
 			print_r($errors);
+			die();
 		}
 	}
-	//write back changes to the file in memory and save as string
-	$xmlStr = implode(PHP_EOL,$xmlArray);
-	return (string) $xmlStr;
+	//write back changes to a new file
+	//$xmlStr = implode(PHP_EOL,$xmlArray);
+	$xmlFileFixed = str_replace($statsXMLfilename,$statsXMLfilename . ".fixed",$xml_file);
+	if(file_exists($xmlFileFixed)){
+		//delete existing file
+		if(!unlink($xmlFileFixed)){
+			wh_log("Failed to delete existing \"fixed\" Stats XML file. Maybe a permissions error?");
+		}
+	}
+	if(file_put_contents($xmlFileFixed,implode('',$xmlArray)) === FALSE){
+		//failed to write file
+		wh_log("Failed to write temporary Stats XML file after correcting for UTF-8 errors.");
+		die("Failed to write temporary Stats XML file after correcting for UTF-8 errors.".PHP_EOL);
+	}
+
+	return (string) $xmlFileFixed;
 }
 
 function find_statsxml(string $saveDir, array $profileID, array $USBProfileDir){
 	global $USBProfile;
+	global $statsXMLfilename;
 	//look for any Stats.xml files in the profile directory(ies)
 	$saveDir = $saveDir . "/LocalProfiles";
 	$file_arr = array();
 	$i = 0;
 	if(!empty($profileID)){
 		foreach ($profileID as $id){
-			foreach (glob($saveDir."/".$id."/Stats.xml",GLOB_BRACE) as $xml_file){
+			foreach (glob($saveDir."/".$id."/".$statsXMLfilename,GLOB_BRACE) as $xml_file){
 				//build array of file directory, IDs, modified file times, and set the inital timestamp to "0"
 				$file_arr[$i]['id'] = $id; //id for tracking 
 				$file_arr[$i]['file'] = $xml_file; //file directory
@@ -286,15 +318,15 @@ function find_statsxml(string $saveDir, array $profileID, array $USBProfileDir){
 				$i++;
 			}
 			if (empty($file_arr) && !$USBProfile){ //don't exit too early
-				wh_log("Stats.xml file(s) not found in $saveDir/$id! Also, if you are not running Stepmania in portable mode, your Stepmania Save directory may be in \"AppData\".");
-				exit ("Stats.xml file(s) not found in $saveDir/$id! LocalProfiles directory not found in Stepmania Save directory. Also, if you are not running Stepmania in portable mode, your Stepmania Save directory may be in \"AppData\"." . PHP_EOL);
+				wh_log("$statsXMLfilename file(s) not found in $saveDir/$id! Also, if you are not running Stepmania in portable mode, your Stepmania Save directory may be in \"AppData\".");
+				exit ("$statsXMLfilename file(s) not found in $saveDir/$id! LocalProfiles directory not found in Stepmania Save directory. Also, if you are not running Stepmania in portable mode, your Stepmania Save directory may be in \"AppData\"." . PHP_EOL);
 			}
 		}
 	}
 	if($USBProfile){
 		//using usb profile(s)...
 		foreach ($USBProfileDir as $dir){
-			foreach (glob($dir."/Stats.xml",GLOB_BRACE) as $xml_file){
+			foreach (glob($dir."/".$statsXMLfilename,GLOB_BRACE) as $xml_file){
 				//build array of file directory, IDs, modified file times, and set the inital timestamp to "0"
 				$file_arr[$i]['id'] = $dir; //use the dir as the id for tracking
 				$file_arr[$i]['file'] = $xml_file; //file directory
@@ -305,20 +337,21 @@ function find_statsxml(string $saveDir, array $profileID, array $USBProfileDir){
 				$i++;
 			}
 			if (empty($file_arr)){
-				wh_log("Stats.xml file(s) not found on USB drive at \"$dir!\"");
-				exit ("Stats.xml file(s) not found on USB drive at \"$dir!\"" . PHP_EOL);
+				wh_log("$statsXMLfilename file(s) not found on USB drive at \"$dir!\"");
+				exit ("$statsXMLfilename file(s) not found on USB drive at \"$dir!\"" . PHP_EOL);
 			}
 		}
 	}
 	if (empty($file_arr)){
-		wh_log("Stats.xml file(s) not found!");
-		exit ("Stats.xml file(s) not found!" . PHP_EOL);
+		wh_log("$statsXMLfilename file(s) not found!");
+		exit ("$statsXMLfilename file(s) not found!" . PHP_EOL);
 	}
 
 	return (array) $file_arr;
 }
 
 function statsXMLtoArray (array $file){
+	global $statsXMLfilename;
 	//This is THE Stats.XML parser for StepMania. A lot of assumptions are made about the structure of the file, but considering it's generated by 
 	//the game, I'm not too concerned about it breaking.
 
@@ -330,9 +363,9 @@ function statsXMLtoArray (array $file){
 	$statsHighScores = array();
 	$stats_arr = array();
 
-	//OutFox "steps hash" implementation was changed 3+ times so far, it can be either:
-	$outFoxHash = array('StepsHash','ChartHash','Hash','OnlineHash');
-	$outFoxDesc = array('Description','OnlineDescription');
+	//Stepmania & OutFox "steps hash" implementation was changed 3+ times so far, it can be either:
+	$stepsHash = array('StepsHash','ChartHash','Hash','OnlineHash');
+	$stepsDesc = array('Description','OnlineDescription');
 	
 	//open xml file
 	libxml_clear_errors();
@@ -345,29 +378,24 @@ function statsXMLtoArray (array $file){
 	if (!empty($errors)){
 		//attempt to fix errors in memory then load xml (fixed) via string
 		//not a great solution, but blame StepMania, not me!
-		$xmlArray = file($xml_file);
-		$xmlStr = parseXmlErrors($errors,$xmlArray);
-		unset($xmlArray);
 		$xml = FALSE;
-		wh_log("Loading Stats.xml file as a string (after correcting for UTF-8 errors).");
+		wh_log("Loading temp fixed $statsXMLfilename file after correcting for UTF-8 errors.");
 		while (!$xml){
+			$xmlFileFixed = parseXmlErrors($errors,$xml_file);
 			//php's simplexml loader, stops after the first error. We can't fix all the errors at one time.
 			//as long as the $xml is FALSE, we loop one fix at a time
 			libxml_clear_errors();
-			$xml = simplexml_load_string($xmlStr); //switched to loading as a string instead of a file
+			$xml = simplexml_load_file($xmlFileFixed); //switched to loading the *hopefully* fixed temp file
 			$errors = libxml_get_errors();
 			if (!empty($errors)){
-				$xmlArray = explode(PHP_EOL,$xmlStr);
-				$xmlStr = parseXmlErrors($errors,$xmlArray);
-				unset($xmlArray);
 				$xml = FALSE;
 			}
 		}
 	}
-	unset ($xmlArray,$xmlStr,$errors); //without unsetting thses variables, we get a memory leak over time
+	//unset ($xmlArray,$xmlStr,$errors); //without unsetting thses variables, we get a memory leak over time
 
 	//die if too many errors
-	if(!$xml){wh_log("Too many errors with Stats.xml file."); die ("Too many errors with Stats.xml file." . PHP_EOL);}
+	if(!$xml){wh_log("Too many errors with $statsXMLfilename file."); die ("Too many errors with $statsXMLfilename file." . PHP_EOL);}
 
 	// Example xml structure of Stats.xml file:
 	// $xml->SongScores->Song[11]['Dir'];
@@ -389,11 +417,11 @@ function statsXMLtoArray (array $file){
 		$song_dir = (string)$song['Dir'];
 		
 		foreach ($song->Steps as $steps){		
-			$steps_type = (string)$steps['StepsType']; //dance-single, dance-double, etc.
+			$stepsType = (string)$steps['StepsType']; //dance-single, dance-double, etc.
 			$difficulty = (string)$steps['Difficulty']; //Beginner, Medium, Expert, etc.
 			//$chartHash = (string)$steps['Hash']; //OutFox chart hash
 			$chartHash = "";
-			foreach ($outFoxHash as $hash){
+			foreach ($stepsHash as $hash){
 				if(!empty($steps[$hash])){
 					$chartHash = (string)$steps[$hash];
 					break;
@@ -401,7 +429,7 @@ function statsXMLtoArray (array $file){
 			}
 			//$stepsDescription = (string)$steps['Description']; //OutFox steps description
 			$stepsDescription = "";
-			foreach ($outFoxDesc as $desc){
+			foreach ($stepsDesc as $desc){
 				if(!empty($steps[$desc])){
 					$stepsDescription = (string)$steps[$desc];
 					break;
@@ -412,7 +440,7 @@ function statsXMLtoArray (array $file){
 				$num_played = (string)$high_score_lists->NumTimesPlayed; //integer count of times a song is played
 				$last_played = (string)$high_score_lists->LastPlayed; //date the song/difficulty was last played
 
-				$dateTimeHS = array(null);
+				$dateTimeHS = array();
 				$highScores = array();
 
 				foreach ($high_score_lists->HighScore as $high_score){				
@@ -424,22 +452,24 @@ function statsXMLtoArray (array $file){
 				//last_played date for the song isn't always the latest due to not having a time element.
 				//assume that, if the most recent highscore is greater than the lasted time played date,
 				//we can replace the last_played date with the date/time from the highscore
-				$dateTimeMax = max($dateTimeHS);
-				if (strtotime($dateTimeMax) > strtotime($last_played)){
-					$last_played = $dateTimeMax;
+				if(!empty($dateTimeHS)){
+					$dateTimeMax = max($dateTimeHS);
+					if (strtotime($dateTimeMax) > strtotime($last_played)){
+						$last_played = $dateTimeMax;
+					}
 				}
 				
 				if (!empty($highScores)){
 					foreach ($highScores as $highScoreSingle){
-						if((string)strtotime($highScoreSingle->DateTime) > strtotime(date("Y-m-j",strtotime($timestampLastPlayed)))){
+						if(strtotime($highScoreSingle->DateTime) > strtotime(date("Y-m-j",strtotime($timestampLastPlayed)))){
 							//highscore date/time is greater than the stored lastPlayed timestamp, add it to the array
-							$statsHighScores[] = array('DisplayName' => $display_name, 'PlayerGuid' => $playerGuid, 'ProfileID' => $profileID, 'ProfileType' => $profileType, 'SongDir' => $song_dir, 'StepsType' => $steps_type, 'Difficulty' => $difficulty, 'ChartHash' => $chartHash, 'StepsDescription' => $stepsDescription, 'NumTimesPlayed' => $num_played, 'LastPlayed' => $last_played, 'HighScore' => $highScoreSingle);
+							$statsHighScores[] = array('DisplayName' => $display_name, 'PlayerGuid' => $playerGuid, 'ProfileID' => $profileID, 'ProfileType' => $profileType, 'SongDir' => $song_dir, 'StepsType' => $stepsType, 'Difficulty' => $difficulty, 'ChartHash' => $chartHash, 'StepsDescription' => $stepsDescription, 'NumTimesPlayed' => $num_played, 'LastPlayed' => $last_played, 'HighScore' => $highScoreSingle);
 						}
 					}
 				}
 				if(strtotime($last_played) >= strtotime(date("Y-m-j",strtotime($timestampLastPlayed)))){
 					//lastplayed date/time is greater than the stored lastPlayed timestamp, add it to the array
-					$statsLastPlayed[] = array('DisplayName' => $display_name, 'PlayerGuid' => $playerGuid, 'ProfileID' => $profileID, 'ProfileType' => $profileType, 'SongDir' => $song_dir, 'StepsType' => $steps_type, 'Difficulty' => $difficulty, 'ChartHash' => $chartHash, 'StepsDescription' => $stepsDescription, 'NumTimesPlayed' => $num_played, 'LastPlayed' => $last_played);
+					$statsLastPlayed[] = array('DisplayName' => $display_name, 'PlayerGuid' => $playerGuid, 'ProfileID' => $profileID, 'ProfileType' => $profileType, 'SongDir' => $song_dir, 'StepsType' => $stepsType, 'Difficulty' => $difficulty, 'ChartHash' => $chartHash, 'StepsDescription' => $stepsDescription, 'NumTimesPlayed' => $num_played, 'LastPlayed' => $last_played);
 					//add the last_played timestamp to an array for safe keeping
 					$timestampLastPlayedArr[] = $last_played;
 				}
@@ -447,7 +477,9 @@ function statsXMLtoArray (array $file){
 		}
 	}
 
-	$timestampLastPlayed = max($timestampLastPlayedArr); //overwrite the lastplayed timestamp with the new (latest) value
+	if(!empty($timestampLastPlayedArr)){
+		$timestampLastPlayed = max($timestampLastPlayedArr); //overwrite the lastplayed timestamp with the new (latest) value
+	}
 	//build the final array
 	$stats_arr = array('LastPlayed' => $statsLastPlayed, 'HighScores' => $statsHighScores, 'timestampLastPlayed' => $timestampLastPlayed);
 
@@ -472,7 +504,7 @@ function curlPost(string $postSource, array $postData){
 	unset($postData,$jsonArray); //memory leak
 	wh_log ("Creating JSON took: " . round(microtime(true) - $jsMicro,3) . " secs.");
 	$errorJson = json_last_error();
-	if($errorJson != "JSON_ERROR_NONE"){
+	if($errorJson !== JSON_ERROR_NONE){
 		//there was an error with the json string
 		wh_log(json_last_error_msg());
 		die(json_last_error_msg().PHP_EOL);
@@ -528,13 +560,12 @@ $profileID = process_profileIDs($profileID);
 $USBProfileDir = process_USBProfileDir($USBProfileDir);
 
 //find stats.xml files
-$file_arr = find_statsxml ($saveDir,$profileID,$USBProfileDir);
-
-if ($autoRun){
-	//welcome to an infinite loop of stats
-	//echo "\\\\\\\\\\\\\\\\\\AUTO MODE ENABLED////////" . PHP_EOL;
-	wh_log("AUTO MODE ENABLED");
+//saveDir valid?
+if(empty($saveDir) || !file_exists($saveDir)){
+	wh_log("StepMania /Save directory is empty or invalid. Check your config.php.".PHP_EOL);
+	die("StepMania /Saveg directory is empty or invalid. Check your config.php.");
 }
+$file_arr = find_statsxml ($saveDir,$profileID,$USBProfileDir);
 
 //endless loop (the way PHP is SuPpOsEd to be used)
 for (;;){
@@ -553,7 +584,7 @@ for (;;){
 			$stats_arr = statsXMLtoArray ($file);
 			//save the last played timestamp in the $file array
 			$file['timestampLastPlayed'] = $stats_arr['timestampLastPlayed'];
-			wh_log ("Stats.XML parse of \"" . $file['id'] . "\" took: " . round(microtime(true) - $statsMicro,3) . " secs.");
+			wh_log ("$statsXMLfilename parse of \"" . $file['id'] . "\" took: " . round(microtime(true) - $statsMicro,3) . " secs.");
 			$chunk = 1000;
 			//LastPlayed
 			if(($countLP = count($stats_arr['LastPlayed'])) > 0){
@@ -601,13 +632,14 @@ for (;;){
 		}
 		$file['ftime'] = $file['mtime'];
 	}
-	if (!$autoRun){
-		//autorun was not set, break the loop
-		break;
-	}
-	echo "."; //what's a group of dots called?
+
 	clearstatcache(); //file times are cached, this clears it
-	sleep($frequency); //wait for # seconds
+	//sleep($frequency); //wait for # seconds
+	for($y=0; $y<=$frequency; $y++){
+		sleep(1);
+		echo "."; //what's a group of dots called?
+	}
+	echo "\33[2K\r"; // clears current line and moves cursor to beginning
 }
 exit();
 

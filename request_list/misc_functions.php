@@ -32,7 +32,7 @@ function add_user($userid, $user){
 	
 	$user = strtolower($user);
 	$sql = "INSERT INTO sm_requestors (twitchid, name, dateadded) VALUES ('$userid', '$user', NOW())";
-	$retval = mysqli_query( $conn, $sql );
+	mysqli_query( $conn, $sql );
 	$the_id = mysqli_insert_id($conn);
 
 	return($the_id);
@@ -99,11 +99,15 @@ function check_length($maxRequests){
 
 function check_cooldown($user){
     global $cooldownMultiplier;
+    global $cooldownUser;
     global $maxRequests;
 
     //check config variables
     if(empty($cooldownMultiplier) || !is_numeric($cooldownMultiplier)){
-        $cooldownMultiplier = 0.4;
+        $cooldownMultiplier = 0.5; //minutes per open request
+    }
+    if(empty($cooldownUser) || !is_numeric($cooldownUser)){
+        $cooldownUser = 30; //seconds
     }
     if(empty($maxRequests) || !is_numeric($maxRequests)){
         $maxRequests = 10;
@@ -112,11 +116,12 @@ function check_cooldown($user){
     //check total length of requests, if over maxRequests, stop
     $length = check_length($maxRequests);
 
-    $interval = $cooldownMultiplier * $length;
+    // global cooldown + user cooldown
+    $interval = ($cooldownMultiplier * $length) + ($cooldownUser / 60);
 
     //scale cooldown as a function of the number of requests. X minutes per open request.	
     global $conn;
-    $sql0 = "SELECT * FROM sm_requests WHERE state <> 'canceled' AND requestor = '$user' AND request_time > DATE_SUB(NOW(), INTERVAL {$interval} MINUTE)";
+    $sql0 = "SELECT * FROM sm_requests WHERE state <> 'canceled' AND requestor = '$user' AND request_time > DATE_SUB(NOW(), INTERVAL $interval MINUTE)";
     $retval0 = mysqli_query( $conn, $sql0 );
     $numrows = mysqli_num_rows($retval0);
     if($numrows > 0 && floor($interval) > 1){
@@ -146,7 +151,7 @@ function recently_played($song_id,$interval){
 	global $conn;
 	$recently_played = FALSE;
     if(empty($interval) || !is_numeric($interval)){$interval = 1;}
-	$sql = "SELECT song_id FROM sm_songsplayed WHERE song_id={$song_id} AND lastplayed > DATE_SUB(NOW(), INTERVAL $interval HOUR)";
+	$sql = "SELECT song_id FROM sm_songsplayed WHERE song_id = $song_id AND lastplayed > DATE_SUB(NOW(), INTERVAL $interval HOUR)";
 	$retval = mysqli_query($conn,$sql);
 	if(mysqli_num_rows($retval) > 0){
 		$recently_played = TRUE;
@@ -177,7 +182,7 @@ function is_emote_request($song){
 function get_broadcaster_limits($broadcaster){
     global $conn;
     $broadcaserLimits = array();
-    $sql0 = "SELECT * FROM sm_broadcaster WHERE broadcaster = '$broadcaster'";
+    $sql0 = "SELECT * FROM sm_broadcaster WHERE broadcaster LIKE '$broadcaster'";
     $retval0 = mysqli_query( $conn, $sql0 );
 
     if(mysqli_num_rows($retval0) == 1){
@@ -192,6 +197,11 @@ function check_request_toggle($broadcaster,$user = NULL){
     if(strtolower($broadcaster) == strtolower($user)){
 		//requestor is broadcaster: bypass
         return;
+    }
+
+    if(check_user(0,$user)["banned"] == "true"){
+        //user is banned
+        die();
     }
 
     $sql0 = "SELECT * FROM sm_broadcaster WHERE broadcaster LIKE '$broadcaster'";
@@ -314,56 +324,56 @@ function parseCommandArgs($argsStr,$user,$broadcaster){
     //remove '#' from the resulting array
     $args = array_map(function($str) {return trim(str_replace("#","",$str));},$args);
 
-    if(count($args) == 1 && strlen($args[0]) == 3){
+    if(count($args) == 1 && (strlen($args[0]) == 2 || strlen($args[0]) == 3) ){
         switch (strtoupper($args[0])){
             case "BSP":
+            case "SE":
                 $result['stepstype'] = "dance-single";
                 $result['difficulty'] = "Easy";
             break;
             case "DSP":
             case "MSP":
             case "SSP":
+            case "SM":
                 $result['stepstype'] = "dance-single";
                 $result['difficulty'] = "Medium";
             break;
             case "ESP":
             case "HSP":
+            case "SH":
                 $result['stepstype'] = "dance-single";
                 $result['difficulty'] = "Hard";
             break;
             case "CSP":
+            case "SX":
                 $result['stepstype'] = "dance-single";
                 $result['difficulty'] = "Challenge";
             break;
-            case "XSP":
-                $result['stepstype'] = "dance-single";
-                $result['difficulty'] = "Edit";
-            break;
             case "BDP":
+            case "DE":
                 $result['stepstype'] = "dance-double";
                 $result['difficulty'] = "Easy";
             break;
             case "DDP":
             case "MDP":
             case "SDP":
+            case "DM":
                 $result['stepstype'] = "dance-double";
                 $result['difficulty'] = "Medium";
             break;
             case "EDP":
             case "HDP":
+            case "DH":
                 $result['stepstype'] = "dance-double";
                 $result['difficulty'] = "Hard";
             break;
             case "CDP":
+            case "DX":
                 $result['stepstype'] = "dance-double";
                 $result['difficulty'] = "Challenge";
             break;
-            case "XDP":
-                $result['stepstype'] = "dance-double";
-                $result['difficulty'] = "Edit";
-            break;
             default:
-                die("@$user gave an invalid 3-letter steps-type/difficulty.");
+                die("@$user gave an invalid 2- or 3-letter steps-type/difficulty combo.");
         }  
     }elseif(count($args) >= 1){
         //$args = array_splice($args,1);
@@ -411,7 +421,7 @@ function parseCommandArgs($argsStr,$user,$broadcaster){
 
     //if stepstype is empty, check if sm_broadcast has one set globally
     if(empty($result['stepstype'])){
-        $sql0 = "SELECT * FROM sm_broadcaster WHERE broadcaster = '$broadcaster'";
+        $sql0 = "SELECT * FROM sm_broadcaster WHERE broadcaster LIKE '$broadcaster'";
         $retval0 = mysqli_query( $conn, $sql0 );
         if(mysqli_num_rows($retval0) == 1){
             $row0 = mysqli_fetch_assoc($retval0);
@@ -422,7 +432,7 @@ function parseCommandArgs($argsStr,$user,$broadcaster){
             die("@$user didn't specify a steps-type!");
         }
     }elseif(!empty($result['stepstype'])){
-        $sql0 = "SELECT * FROM sm_broadcaster WHERE broadcaster = '$broadcaster'";
+        $sql0 = "SELECT * FROM sm_broadcaster WHERE broadcaster LIKE '$broadcaster'";
         $retval0 = mysqli_query( $conn, $sql0 );
         if(mysqli_num_rows($retval0) == 1){
             $row0 = mysqli_fetch_assoc($retval0);

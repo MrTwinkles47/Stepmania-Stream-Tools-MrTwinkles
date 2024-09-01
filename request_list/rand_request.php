@@ -33,7 +33,7 @@ function request_song($song_id, $requestor, $tier, $twitchid, $broadcaster, $req
 		requested_recently($song_id,$requestor,$userobj["whitelisted"]);
 	}
 
-    $sql = "INSERT INTO sm_requests (song_id, request_time, requestor, twitch_tier, broadcaster, request_type, stepstype, difficulty) VALUES ('{$song_id}', NOW(), '{$requestor}', '{$tier}', '{$broadcaster}', '{$request_type}', '{$stepstype}', '{$difficulty}')";
+    $sql = "INSERT INTO sm_requests (song_id, request_time, requestor, twitch_tier, broadcaster, request_type, stepstype, difficulty) VALUES ('$song_id', NOW(), '$requestor', '$tier', '$broadcaster', '$request_type', '$stepstype', '$difficulty')";
     mysqli_query( $conn, $sql );
 
 }
@@ -98,7 +98,7 @@ function get_top_percent_played_songs(string $profileName, string $whereTypeDiff
 	$sql = "SELECT song_id, SUM(numplayed) AS numplayed
 			FROM sm_songsplayed
 			JOIN sm_songs ON sm_songsplayed.song_id = sm_songs.id
-			WHERE sm_songs.installed = 1 AND sm_songs.banned NOT IN(1, 2) AND sm_songsplayed.song_id > 0 AND username LIKE '{$profileName}' $whereTypeDiffClause AND sm_songsplayed.song_id IN (
+			WHERE sm_songs.installed = 1 AND sm_songs.banned NOT IN(1, 2) AND sm_songsplayed.song_id > 0 AND username LIKE '$profileName' $whereTypeDiffClause AND sm_songsplayed.song_id IN (
 				SELECT song_id
 				FROM sm_scores
 				GROUP BY song_id
@@ -127,7 +127,7 @@ function get_average_percentDP(string $profileName, string $whereTypeDiffClause)
 	$sql = "SELECT AVG(percentdp) as average
 			FROM sm_scores
 			JOIN sm_songs ON sm_scores.song_id = sm_songs.id
-			WHERE sm_songs.installed = 1 AND sm_songs.banned NOT IN(1, 2) AND grade <> 'Failed' AND percentdp > 0.5 AND username LIKE '{$profileName}' $whereTypeDiffClause";
+			WHERE sm_songs.installed = 1 AND sm_songs.banned NOT IN(1, 2) AND grade <> 'Failed' AND percentdp > 0.5 AND username LIKE '$profileName' $whereTypeDiffClause";
 
 	$retval = mysqli_query( $conn, $sql );
 	
@@ -164,8 +164,9 @@ if(isset($_GET["userid"])){
 if(isset($_GET["broadcaster"]) && !empty($_GET["broadcaster"])){
 	$broadcaster = mysqli_real_escape_string($conn,$_GET["broadcaster"]);
 	check_request_toggle($broadcaster, $user);
-	if (array_key_exists($broadcaster,$broadcasters)){
-		$profileName = $broadcasters[$broadcaster];
+	$broadcasters = array_change_key_case($broadcasters,CASE_LOWER);
+	if (array_key_exists(strtolower($broadcaster),$broadcasters)){
+		$profileName = $broadcasters[strtolower($broadcaster)];
 	}else{
 		$profileName = "%";
 	}
@@ -217,7 +218,7 @@ if($_GET["random"] == "random"){
 	$sql = "SELECT sm_songs.id AS id,sm_songs.title AS title,sm_songs.subtitle AS subtitle,sm_songs.artist AS artist,sm_songs.pack AS pack 
 	FROM sm_songsplayed 
 	JOIN sm_songs ON sm_songsplayed.song_id=sm_songs.id  
-	WHERE sm_songsplayed.song_id > 0 AND sm_songsplayed.username LIKE '{$profileName}' AND banned NOT IN(1,2) AND installed=1 AND sm_songsplayed.numplayed > 0 $whereTypeDiffClause AND sm_songsplayed.song_id IN (
+	WHERE sm_songsplayed.song_id > 0 AND sm_songsplayed.username LIKE '$profileName' AND banned NOT IN(1,2) AND installed=1 AND sm_songsplayed.numplayed > 0 $whereTypeDiffClause AND sm_songsplayed.song_id IN (
 		SELECT song_id
 		FROM sm_scores
 		WHERE percentdp > 0)
@@ -324,7 +325,7 @@ if($_GET["random"] == "unplayed"){
 	WHERE installed=1 AND banned NOT IN(1,2) AND id NOT IN (
 		SELECT song_id 
 		FROM sm_songsplayed
-		WHERE song_id>0 AND username LIKE '{$profileName}') 
+		WHERE song_id>0 AND username LIKE '$profileName') 
 		AND sm_songs.id IN (
             SELECT song_id
             FROM sm_notedata
@@ -362,7 +363,7 @@ if($_GET["random"] == "top"){
 			JOIN 
 				(SELECT song_id,SUM(numplayed) AS numplayed,stepstype 
 				FROM sm_songsplayed
-				WHERE song_id>0 AND numplayed>1 AND username LIKE '{$profileName}' $whereTypeDiffClause  
+				WHERE song_id>0 AND numplayed>1 AND username LIKE '$profileName' $whereTypeDiffClause  
 				GROUP BY song_id,stepstype 
 				ORDER BY numplayed DESC 
 				LIMIT 100) AS t2 
@@ -430,7 +431,7 @@ if($_GET["random"] == "gitgud"){
 	$topTotal = get_top_percent_played_songs($profileName,$whereTypeDiffClauseSP);
 	$averagePercentDP = get_average_percentDP($profileName,$whereTypeDiffClause);
 
-	$sql = "SELECT t2.song_id AS song_id, sm_songs.title AS title, sm_songs.subtitle AS subtitle, sm_songs.artist AS artist, sm_songs.pack AS pack, t2.percentdp as percentdp, grade, score, t2.stepstype, difficulty, scores, DATETIME
+	$sql = "SELECT t2.song_id AS song_id, sm_songs.title AS title, sm_songs.subtitle AS subtitle, sm_songs.artist AS artist, sm_songs.pack AS pack, t2.percentdp as percentdp, grade, score, t2.stepstype, difficulty, scores, DATE(datetime)
 		FROM sm_scores
 		JOIN(
 			SELECT sm_scores.song_id, MAX(percentdp) AS percentdp, COUNT(sm_scores.id) AS scores, stepstype
@@ -439,7 +440,7 @@ if($_GET["random"] == "gitgud"){
 				SELECT song_id, SUM(numplayed) AS numplayed
 				FROM sm_songsplayed
 				JOIN sm_songs ON sm_songsplayed.song_id = sm_songs.id
-				WHERE sm_songs.installed = 1 AND sm_songs.banned NOT IN(1, 2) AND sm_songsplayed.song_id > 0 AND numplayed > 1 AND username LIKE '{$profileName}' $whereTypeDiffClauseSP AND sm_songsplayed.song_id IN (
+				WHERE sm_songs.installed = 1 AND sm_songs.banned NOT IN(1, 2) AND sm_songsplayed.song_id > 0 AND numplayed > 1 AND username LIKE '$profileName' $whereTypeDiffClauseSP AND sm_songsplayed.song_id IN (
                     SELECT song_id
                     FROM sm_scores
                     GROUP BY song_id
@@ -449,7 +450,7 @@ if($_GET["random"] == "gitgud"){
 				LIMIT $topTotal 
 				) AS topt
 			ON topt.song_id = sm_scores.song_id
-			WHERE grade <> 'Failed' AND percentdp > 0 AND username LIKE '{$profileName}' $whereTypeDiffClause 
+			WHERE grade <> 'Failed' AND percentdp > 0 AND username LIKE '$profileName' $whereTypeDiffClause 
 			GROUP BY song_id, stepstype
 			HAVING scores > 1
 			ORDER BY percentdp ASC
@@ -491,7 +492,7 @@ if($_GET["random"] == "gitgud"){
 
 					$displayModeDiff = display_ModeDiff(array('stepstype' => $row['stepstype'],'difficulty' => $row['difficulty']));
 					$displayArtist = get_duplicate_song_artist ($row["song_id"]);
-					echo ("@$user dares you to beat ".$displayScore." from ".date_format($row["datetime"],"Y/m/d")." at " . trim($row["title"]." ".$row["subtitle"]).$displayArtist. " from " . $row["pack"] . $displayModeDiff . " ");
+					echo ("@$user dares you to beat ".$displayScore." from ".date_format(date_create($row["datetime"]),"Y/n/j")." at " . trim($row["title"]." ".$row["subtitle"]).$displayArtist. " from " . $row["pack"] . $displayModeDiff . " ");
 					//wh_log("@$user requested $request_type (TopPercent: $topTotal, AveragePDP: $averagePercentDP): $displayScore at " . $row["song_id"] . " : " . trim($row["title"]." ".$row["subtitle"]).$displayArtist. " from " . $row["pack"] . $displayModeDiff);
 					$i++;
 				}
@@ -511,7 +512,7 @@ if($_GET["random"] == "roll"){
 	$sql = "SELECT sm_songs.id AS id,sm_songs.title AS title,sm_songs.subtitle AS subtitle,sm_songs.artist AS artist,sm_songs.pack AS pack 
 	FROM sm_songsplayed 
 	JOIN sm_songs ON sm_songsplayed.song_id=sm_songs.id  
-	WHERE sm_songsplayed.song_id > 0 AND sm_songsplayed.username LIKE '{$profileName}' AND banned NOT IN(1,2) AND installed=1 AND sm_songsplayed.numplayed > 0 $whereTypeDiffClause AND sm_songsplayed.song_id IN (
+	WHERE sm_songsplayed.song_id > 0 AND sm_songsplayed.username LIKE '$profileName' AND banned NOT IN(1,2) AND installed=1 AND sm_songsplayed.numplayed > 0 $whereTypeDiffClause AND sm_songsplayed.song_id IN (
 		SELECT song_id
 		FROM sm_scores
 		WHERE percentdp > 0)
@@ -521,7 +522,7 @@ if($_GET["random"] == "roll"){
 	$retval = mysqli_query( $conn, $sql );
 
 	if (mysqli_num_rows($retval) > 0) {
-		echo "@$user rolled (request with !requestid [song id]):\n";
+		echo "@$user rolled (request with !requestid [song id]):";
 		$i=1;
 		while(($row = mysqli_fetch_assoc($retval)) && ($i <= $num)) {
 			if(!recently_played($row["id"],1) && check_stepstype($broadcaster,$row["id"]) && check_meter($broadcaster,$row["id"])){
@@ -549,7 +550,7 @@ if($_GET["random"] == "roll"){
 		
 		if(mysqli_num_rows($retval) >= 100) {
 			//let's hope for at least 100 results so that it at least seems like a random pick
-			echo "@$user rolled (request with !requestid [song id]):\n";
+			echo "@$user rolled (request with !requestid [song id]):";
 			$i=1;
 			while(($row = mysqli_fetch_assoc($retval)) && ($i <= $num)) {
 				if(!recently_played($row["id"],1) && check_stepstype($broadcaster,$row["id"]) && check_meter($broadcaster,$row["id"])){
@@ -622,7 +623,7 @@ if(!empty($_GET["random"]) && $_GET["random"] != "random"){
         $sql = "SELECT sm_songs.id AS id,sm_songs.title AS title,sm_songs.subtitle AS subtitle,sm_songs.artist AS artist,sm_songs.pack AS pack 
 		FROM sm_songs 
 		JOIN sm_notedata ON sm_notedata.song_id = sm_songs.id 
-		WHERE installed=1 AND banned NOT IN(1,2) AND (pack REGEXP '{$random}' OR sm_songs.credit REGEXP '{$random}' OR sm_notedata.credit REGEXP '{$random}') $whereTypeDiffClause 
+		WHERE installed=1 AND banned NOT IN(1,2) AND (pack REGEXP '{$random}' OR sm_songs.credit REGEXP '$random' OR sm_notedata.credit REGEXP '$random') $whereTypeDiffClause 
 		GROUP BY sm_songs.id 
 		ORDER BY RAND()
 		LIMIT 100";

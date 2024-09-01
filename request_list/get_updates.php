@@ -24,7 +24,7 @@ function clean_filename(string $filename){
 }
 
 function format_pack($pack,$requestor){
-	$length = 40;
+	$length = 38;
 	$length = $length - (strlen($requestor) * 0.8);
 
  	$pack = str_ireplace("Dance Dance Revolution","DDR",$pack);
@@ -33,11 +33,8 @@ function format_pack($pack,$requestor){
 	$pack = str_ireplace("DancingStage","DS",$pack);
 	$pack = str_ireplace("In The Groove","ITG",$pack);
 	$pack = str_ireplace("InTheGroove","ITG",$pack);
-	//$pack = str_ireplace("Ben Speirs","BS",$pack);
-	//$pack = str_ireplace("JBEAN Exclusives","JBEAN...",$pack);
 	$pack = preg_replace("/(\(.*\).\(.*\))$/","",$pack,1);
 	if(strlen($pack) > $length){
-		//$pack = trim(substr($pack,0,18))."...".trim(substr($pack,strlen($pack)-7));
 		$separator = "...";
 		$maxLength = $length - strlen($separator);
 		$startTrunc = $maxLength / 2;
@@ -70,8 +67,7 @@ function rand_gradient(string $pack){
 	}
   
     //Giving values to the linear gradiant.
-    //$background = "linear-gradient(${direction}deg, rgba(${r1},${g1},${b1},${a1}), rgba(${r2},${g2},${b2},${a2}))";
-	$background = "linear-gradient(${direction}deg, rgb({$colorRGB[0][0]},{$colorRGB[0][1]},{$colorRGB[0][2]}), rgb({$colorRGB[1][0]},{$colorRGB[1][1]},{$colorRGB[1][2]}))";
+		$background = "linear-gradient(".$direction."deg, rgb({$colorRGB[0][0]},{$colorRGB[0][1]},{$colorRGB[0][2]}), rgb({$colorRGB[1][0]},{$colorRGB[1][1]},{$colorRGB[1][2]}))";
 
     return (string)$background;
 }
@@ -81,7 +77,7 @@ function rand_gradient(string $pack){
 function get_cancels_since($id,$oldid,$broadcaster){
 
 	global $conn;
-	$sql = "SELECT * FROM sm_requests WHERE id >= $oldid AND state =\"canceled\" AND broadcaster LIKE \"{$broadcaster}\" ORDER BY id ASC";
+	$sql = "SELECT * FROM sm_requests WHERE id >= $oldid AND state =\"canceled\" AND broadcaster LIKE \"$broadcaster\" ORDER BY id ASC";
 	$retval = mysqli_query( $conn, $sql ) or die(mysqli_error($conn));
 	$cancels = Array();
 	   while($row = mysqli_fetch_assoc($retval)) {
@@ -151,7 +147,7 @@ function get_completions_since($id,$oldid,$broadcaster){
 
         global $conn;
 		//$id=$id-50;
-        $sql = "SELECT id FROM sm_requests WHERE id >= $oldid AND state = \"completed\" AND broadcaster LIKE \"{$broadcaster}\"";
+        $sql = "SELECT id FROM sm_requests WHERE id >= $oldid AND state = \"completed\" AND broadcaster LIKE \"$broadcaster\"";
         $retval = mysqli_query( $conn, $sql ) or die(mysqli_error($conn));
         $completions = Array();
            while($row = mysqli_fetch_assoc($retval)) {
@@ -166,7 +162,7 @@ function get_completions_since($id,$oldid,$broadcaster){
 function get_skips_since($id,$oldid,$broadcaster){
 
 	global $conn;
-	$sql = "SELECT * FROM sm_requests WHERE id >= $oldid AND state =\"skipped\" AND broadcaster LIKE \"{$broadcaster}\" ORDER BY id ASC";
+	$sql = "SELECT * FROM sm_requests WHERE id >= $oldid AND state =\"skipped\" AND broadcaster LIKE \"$broadcaster\" ORDER BY id ASC";
 	$retval = mysqli_query( $conn, $sql ) or die(mysqli_error($conn));
 	$skips = Array();
 	   while($row = mysqli_fetch_assoc($retval)) {

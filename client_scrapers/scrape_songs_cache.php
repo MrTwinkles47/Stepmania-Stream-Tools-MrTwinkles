@@ -5,7 +5,6 @@
 // It cleans [TAGS] from the song titles and it saves a "search ready" version of each song title (without spaces or special characters) to the "strippedtitle" column.
 // This way you can have another script search/parse your entire song library - for example to make song requests.
 // You only need to re-run this script any time you add new songs and Stepmania has a chance to build its cache. It'll skip songs that already exist in the DB.
-// The same exact song title is allowed to exist in different packs.
 
 // Configuration
 
@@ -36,11 +35,15 @@ wh_log("Starting SMRequests v$versionClient Song Cache Scraper...");
 wh_log_purge();
 //
 
-if(file_exists(__DIR__."/config.php") && is_file(__DIR__."/config.php")){
-	require_once ('config.php');
-}else{
+if(!file_exists(__DIR__."/config.php") && !is_file(__DIR__."/config.php")){
 	wh_log("config.php file not found! You must configure these scripts before running. You can find an example config.php file at config.example.php.");
 	die("config.php file not found! You must configure these scripts before running. You can find an example config.php file at config.example.php.".PHP_EOL);
+}else{
+	require_once ('config.php');
+	if(CONFIG_VERSION != $versionClient || empty(CONFIG_VERSION) || empty($versionClient)){
+		wh_log("config.php file is from a previous version! You must build a new config.php from the current config.example.php file. Exiting...");
+		die("config.php file is from a previous version! You must build a new config.php from the current config.example.php file. Exiting...".PHP_EOL);
+	}
 }
 
 // Code
@@ -57,23 +60,37 @@ function check_environment(){
 	}
 
 	//check php version and dump to log
-	switch(version_compare(PHP_VERSION,'7.4.26')){
+	switch(version_compare(PHP_VERSION,'7.4.33')){
+		case 0:
+			//version equal
+			break;
 		case -1:
 			//version too low
 			wh_log("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
-			die("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
+			die("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION . PHP_EOL);
 			break;
 		case 1:
 			//version higher than test
-			if(version_compare(PHP_VERSION,'8.0.0','>=')){
-				//php8 is not supported....yet
-				wh_log("PHP 8 is not supported! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
-				die("PHP 8 is not supported! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
+			switch(version_compare(PHP_VERSION,'8.0.0')){
+				//php 8 support is in beta
+				case 0:
+					//version equal
+				case -1:
+					//version lower
+					//case for some PHP 7.4 version greater than 7.4.33
+					break;
+				case 1:
+					//version higher
+					if(version_compare(PHP_VERSION, '8.3.0','<')){
+						wh_log("PHP 8 support is in BETA! Please install the latest version of PHP 8.3. Your version is: " . PHP_VERSION);
+						die("PHP 8 support is in BETA! Please install the latest version of PHP 8.3. Your version is: " . PHP_VERSION . PHP_EOL);
+					}else{
+						wh_log("PHP 8 support is in BETA! Please report any bugs!");
+						echo("PHP 8 support is in BETA! Please report any bugs!" . PHP_EOL);
+					}
+					break;
 			}
-			//full steam ahead!	
 			break;
-		default:
-			//versions match!
 	}
 
 	//set timezone
@@ -304,19 +321,19 @@ function parseNotedata($file) {
 				//build array of notedata chart information
 				
 			//Not all chart files have these descriptors, so let's check if they exist to avoid notices/errors	
-				array_key_exists('#CHARTNAME',$lines) 		? $lines['#CHARTNAME']	 	: $lines['#CHARTNAME']   	= "";
-				array_key_exists('#DESCRIPTION',$lines) 	? $lines['#DESCRIPTION'] 	: $lines['#DESCRIPTION'] 	= "";
-				array_key_exists('#CHARTSTYLE',$lines)  	? $lines['#CHARTSTYLE']	 	: $lines['#CHARTSTYLE']  	= "";
-				array_key_exists('#CREDIT',$lines)      	? $lines['#CREDIT']    	 	: $lines['#CREDIT']      	= "";
-				array_key_exists('#CHARTHASH',$lines)      	? $lines['#CHARTHASH']    	: $lines['#CHARTHASH']      = "";
-				array_key_exists('#DISPLAYBPM',$lines)      ? $lines['#DISPLAYBPM']    	: $lines['#DISPLAYBPM']      = "";
+				array_key_exists('#CHARTNAME',$lines) 	? $lines['#CHARTNAME']	 : $lines['#CHARTNAME']   	= "";
+				array_key_exists('#DESCRIPTION',$lines) ? $lines['#DESCRIPTION'] : $lines['#DESCRIPTION'] 	= "";
+				array_key_exists('#CHARTSTYLE',$lines)  ? $lines['#CHARTSTYLE']	 : $lines['#CHARTSTYLE']  	= "";
+				array_key_exists('#CREDIT',$lines)      ? $lines['#CREDIT']    	 : $lines['#CREDIT']      	= "";
+				array_key_exists('#CHARTHASH',$lines)   ? $lines['#CHARTHASH']   : $lines['#CHARTHASH']     = "";
+				array_key_exists('#DISPLAYBPM',$lines)  ? $lines['#DISPLAYBPM']  : $lines['#DISPLAYBPM']    = "";
 				
 				if( strpos($lines['#DISPLAYBPM'],':') > 0){
 					//deal with split bpm values
 					$display_bpmSplit = explode($delimiter,$lines['#DISPLAYBPM']);
-					$lines['#DISPLAYBPM'] = intval(round(min($display_bpmSplit),0)) . "-" . intval(round(max($display_bpmSplit),0));
+					$lines['#DISPLAYBPM'] = intval(round(floatval(min($display_bpmSplit)),0)) . "-" . intval(round(floatval(max($display_bpmSplit)),0));
 				}else{
-					$lines['#DISPLAYBPM'] = intval(round($lines['#DISPLAYBPM'],0));
+					$lines['#DISPLAYBPM'] = intval(round(floatval($lines['#DISPLAYBPM']),0));
 				}
 								
 				$notedata_array[] = array('chartname' => $lines['#CHARTNAME'], 'stepstype' => $lines['#STEPSTYPE'], 'description' => $lines['#DESCRIPTION'], 'chartstyle' => $lines['#CHARTSTYLE'], 'charthash' => $lines['#CHARTHASH'], 'difficulty' => $lines['#DIFFICULTY'], 'meter' => $lines['#METER'], 'radarvalues' => $lines['#RADARVALUES'], 'credit' => $lines['#CREDIT'], 'displaybpm' => $lines['#DISPLAYBPM'], 'stepfilename' => $lines['#STEPFILENAME']);
@@ -380,6 +397,12 @@ function doesFileExist(string $songFilename){
 
 	$return = FALSE;
 
+	//songDir valid?
+	if(empty($songsDir) || !file_exists($songsDir)){
+		wh_log("StepMania song directory is empty or invalid. Check your config.php.".PHP_EOL);
+		die("StepMania song directory is empty or invalid. Check your config.php.");
+	}
+
 	//fix possible character encoding
 	//convert string to UTF-8 then back to ISO-8859-1 so Windows can understand it
 	$songFilenameOriginal = $songFilename;
@@ -402,7 +425,8 @@ function doesFileExist(string $songFilename){
 			$return = TRUE;
 		}else{
 			//try converting back to ISO-8859-1. Maybe there is a non-UTF-8 character found in a Windows filename?
-			$songFilenameAbs = utf8_decode($songFilenameAbs);
+			//$songFilenameAbs = utf8_decode($songFilenameAbs);
+			$songFilenameAbs = mb_convert_encoding($songFilenameAbs,'ISO-8859-1','UTF-8');
 			if(file_exists($songFilenameAbs)){
 				$return = TRUE;
 			}else{
@@ -428,7 +452,8 @@ function doesFileExist(string $songFilename){
 				break;
 			}else{
 				//try converting back to ISO-8859-1. Maybe there is a non-UTF-8 character found in a Windows filename?
-				$songFilenameAbs = utf8_decode($songFilenameAbs);
+				//$songFilenameAbs = utf8_decode($songFilenameAbs);
+				$songFilenameAbs = mb_convert_encoding($songFilenameAbs,'ISO-8859-1','UTF-8');
 				if(file_exists($songFilenameAbs)){
 					$return = TRUE;
 					break;
@@ -488,7 +513,7 @@ function get_progress($timeChunkStart, $currentChunk, $totalChunks, array $chunk
 }
 
 function parseJsonErrors(string $error, array $jsonArray){
-	if($error == "JSON_ERROR_UTF8" || $error == 5){
+	if($error == JSON_ERROR_UTF8){
 		//json error because of bad utf-8
 		echo json_last_error_msg().PHP_EOL;
 		echo "One of these files has an error. Correct the special character in the song folder name and re-run the script.".PHP_EOL;
@@ -523,7 +548,7 @@ function curlPost(string $postSource, array $postData){
 	//encode array as json
 	$post = json_encode($jsonArray);
 	$errorJson = json_last_error();
-	if($errorJson != "JSON_ERROR_NONE"){
+	if($errorJson != JSON_ERROR_NONE){
 		//there was an error with the json string
 		parseJsonErrors($errorJson,$jsonArray);
 		die();
@@ -573,13 +598,22 @@ check_target_url();
 
 //find cache files
 $files = array ();
-foreach(glob("{$cacheDir}/*", GLOB_BRACE) as $file) {
+//songDir valid?
+if(empty($cacheDir) || !file_exists($cacheDir)){
+	wh_log("StepMania song cache directory is empty or invalid. Check your config.php.".PHP_EOL);
+	die("StepMania song cache directory is empty or invalid. Check your config.php.");
+}
+foreach(glob("$cacheDir/*", GLOB_BRACE) as $file) {
     $files[] = $file;
 }
 
 if(count($files) == 0){
 	wh_log("No files. Songs cache directory not found in Stepmania directory. You must start Stepmania before running this software. Also, if you are not running Stepmania in portable mode, your Stepmania directory may be in \"AppData\"."); 
 	die("No files. Songs cache directory not found in Stepmania directory. You must start Stepmania before running this software. Also, if you are not running Stepmania in portable mode, your Stepmania directory may be in \"AppData\".");
+}elseif(in_array("$cacheDir/index.cache",$files)){
+	//wrong cache folder
+	wh_log("Invalid StepMania songs cache directory.");
+	die("Invalid StepMania songs cache directory.".PHP_EOL);
 }
 
 $i = 0;
@@ -666,17 +700,5 @@ if($i > 0){
 echo (PHP_EOL . "Total time: ". round((microtime(true) - $microStart)/60,1) . " mins." . PHP_EOL);
 wh_log("Total time: ". round((microtime(true) - $microStart)/60,1) . " mins.");
 
-//
-
-// Let's clean up the sm_songs db, removing records that are not installed, have never been requested, never played, or don't have a recorded score
-	//echo "Purging song database and cleaning up...";
-	//$sql_purge = "DELETE FROM sm_songs 
-	//			WHERE NOT EXISTS(SELECT NULL FROM sm_requests WHERE sm_requests.song_id = sm_songs.id LIMIT 1) AND NOT EXISTS (SELECT NULL FROM sm_scores WHERE sm_scores.song_id = sm_songs.id LIMIT 1) AND NOT EXISTS (SELECT NULL FROM sm_songsplayed WHERE sm_songsplayed.song_id = sm_songs.id LIMIT 1) AND sm_songs.installed<>1";
-	//if (!mysqli_query($conn, $sql_purge)) {
-	//		echo "Error: " . $sql_purge . "\n" . mysqli_error($conn);
-	//	}
-
-//
 exit();
-
 ?>
