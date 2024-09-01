@@ -83,6 +83,49 @@ function splitSongDir(string $song_dir){
 	return (array) $splitDir;
 }
 
+function processWebhook(string $url, string $message) {
+	$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); //if true, must specify cacert.pem location in php.ini
+		curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+	$result = curl_exec ($ch);
+	// close cURL resource, and free up system resources
+	curl_close($ch);
+	return true;
+}
+
+function processCallStreamElements(string $url, string $jwt, string $message) {
+	$ch = curl_init();
+		curl_setopt_array($ch, [
+			  CURLOPT_URL => $url,
+			  CURLOPT_RETURNTRANSFER => true,
+			  CURLOPT_ENCODING => "",
+			  CURLOPT_MAXREDIRS => 10,
+			  CURLOPT_TIMEOUT => 30,
+			  CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+			  CURLOPT_CUSTOMREQUEST => "POST",
+			  CURLOPT_POSTFIELDS => "{\n  \"message\": \"". $message . "\"\n}",
+			  CURLOPT_HTTPHEADER => [
+				"Accept: Application/json",
+				"Authorization: Bearer " . $jwt,
+				"Content-Type: application/json"
+			  ],
+			]);	
+		
+	$result = curl_exec ($ch);
+	$err = curl_error($ch);
+	
+	// close cURL resource, and free up system resources
+	curl_close($ch);
+	
+	if ($err) {
+	  return $err;
+	} else {
+	  return true;
+	}
+}
+
 function lookupSongID (string $song_dir){
 	//This function looks up the song ID that matches the song_dir in the sm_songs db
 	global $conn;
@@ -610,7 +653,86 @@ function addHighScoretoDB (array $highscore_array){
 			//Let's build the VALUES string!
 			$sql1_values = "(\"{$highscore['SongDir']}\",\"$song_id\",\"$song_title\",\"$song_pack\",\"{$highscore['Difficulty']}\",\"{$highscore['StepsType']}\",\"{$highscore['ChartHash']}\",\"{$highscore['DisplayName']}\",\"{$highscore['ProfileID']}\",\"{$highscore['ProfileType']}\",\"{$highscore['HighScore']['Grade']}\",\"{$highscore['HighScore']['Score']}\",\"{$highscore['HighScore']['PercentDP']}\",\"{$highscore['HighScore']['Modifiers']}\",\"{$highscore['HighScore']['DateTime']}\",\"{$highscore['HighScore']['SurviveSeconds']}\",\"{$highscore['HighScore']['LifeRemainingSeconds']}\",\"{$highscore['HighScore']['Disqualified']}\",\"{$highscore['HighScore']['MaxCombo']}\",\"{$stageAward}\",\"{$peakComboAward}\",\"{$highscore['HighScore']['PlayerGuid']}\",\"{$highscore['HighScore']['MachineGuid']}\",\"{$highscore['HighScore']['TapNoteScores']['HitMine']}\",\"{$highscore['HighScore']['TapNoteScores']['AvoidMine']}\",\"{$highscore['HighScore']['TapNoteScores']['CheckpointMiss']}\",\"{$highscore['HighScore']['TapNoteScores']['Miss']}\",\"{$highscore['HighScore']['TapNoteScores']['W5']}\",\"{$highscore['HighScore']['TapNoteScores']['W4']}\",\"{$highscore['HighScore']['TapNoteScores']['W3']}\",\"{$highscore['HighScore']['TapNoteScores']['W2']}\",\"{$highscore['HighScore']['TapNoteScores']['W1']}\",\"{$highscore['HighScore']['TapNoteScores']['CheckpointHit']}\",\"{$highscore['HighScore']['HoldNoteScores']['LetGo']}\",\"{$highscore['HighScore']['HoldNoteScores']['Held']}\",\"{$highscore['HighScore']['HoldNoteScores']['MissedHold']}\",\"{$highscore['HighScore']['RadarValues']['Stream']}\",\"{$highscore['HighScore']['RadarValues']['Voltage']}\",\"{$highscore['HighScore']['RadarValues']['Air']}\",\"{$highscore['HighScore']['RadarValues']['Freeze']}\",\"{$highscore['HighScore']['RadarValues']['Chaos']}\",\"{$highscore['HighScore']['RadarValues']['Notes']}\",\"{$highscore['HighScore']['RadarValues']['TapsAndHolds']}\",\"{$highscore['HighScore']['RadarValues']['Jumps']}\",\"{$highscore['HighScore']['RadarValues']['Holds']}\",\"{$highscore['HighScore']['RadarValues']['Mines']}\",\"{$highscore['HighScore']['RadarValues']['Hands']}\",\"{$highscore['HighScore']['RadarValues']['Rolls']}\",\"{$highscore['HighScore']['RadarValues']['Lifts']}\",\"{$highscore['HighScore']['RadarValues']['Fakes']}\")"; 
 				
-			echo "Adding a " . $highscore['HighScore']['Grade'] . " grade for the " . $highscore['Difficulty'] . " chart of " . $song_title . " from " . $song_pack . PHP_EOL;
+			echo "Adding a " . $highscore['HighScore']['Grade'] . " grade for the " . $highscore['Difficulty'] . "/" . $highscore['StepsType'] . " chart of " . $song_title . " from " . $song_pack . PHP_EOL;
+			
+			global $enableWebHook;
+			//echo "webhooks is " . $enableWebHook ."!";
+			
+			if($enableWebHook){
+				//Check to see what webhooks are needing processed
+				$sql_wh = "SELECT id, type, url, criteria, qualifier, jwt FROM sm_webhooks";
+				$res_wh = mysqli_query($conn, $sql_wh);
+				if (mysqli_num_rows($res_wh) == 0){
+					echo "No webhooks to process.";
+				} else {
+					while($hooks = mysqli_fetch_assoc($res_wh)) {
+						
+						$whscore = $highscore['HighScore']['PercentDP'] * 100;
+						//TODO: Customize this message better. Maybe make a configurable message to parse somewhere.
+						$botMessage = "Our Player has achieved a " . $whscore. " on " . $song_title . " from " . $song_pack; 
+						//echo "check for hooks type is " . $hooks['type'] . " right now.";
+						switch ($hooks['type']) {
+							case 1:
+								//echo "Case is 1. check for hooks criteria is " . $hooks['criteria'] . " right now.";
+								//Process the highschore by Grade
+								if ($highscore['HighScore']['Grade'] == $hooks['criteria']) {
+									
+									//echo "Case is 1. Criteria Matched. Check URL " . $hooks['url'] . " right now.";
+									//echo "string contains check is :" . str_contains($hooks['url'], 'streamelements') . " right now.";
+									if (str_contains($hooks['url'], 'streamelements')) {
+										processCallStreamElements($hooks['url'], $hooks['jwt'], $botMessage);
+									} else {
+										processWebhook($hooks['url'], $botMessage);
+									}
+								}
+								break;
+							case 2:
+								//echo "Case is 2. check for hooks criteria is " . $hooks['criteria'] . " right now.";
+								//Process the highscore by award
+								if ($highscore['HighScore']['StageAward'] == $hooks['criteria']) {
+									if (str_contains($hooks['url'], 'streamelements')) {
+										processCallStreamElements($hooks['url'], $hooks['jwt'], $botMessage);
+									} else {
+										processWebhook($hooks['url'], $botMessage);
+									}
+								}
+								break;
+							case 3:
+								//echo "Case is 3. check for hooks criteria is " . $hooks['criteria'] . " right now.";
+								//Process a highscore by Peak Combo Award
+								if ($highscore['HighScore']['PeakComboAward'] == $hooks['criteria']) {
+									if (str_contains($hooks['url'], 'streamelements')) {
+										processCallStreamElements($hooks['url'], $hooks['jwt'], $botMessage);
+									} else {
+										processWebhook($hooks['url'], $botMessage);
+									}
+								}
+								break;
+							case 4:
+								//echo "Case is 4. check for hooks criteria is " . $hooks['criteria'] . " right now.";
+								//Maybe send this to be processed in markComplete?
+								//Process a highscore specific to GitGud
+								echo "Code for Gitgud isn't ready yet";
+								
+								//Find out if this was a request
+								
+								//If the song was a request, was it a gitgud?
+								
+								//If it was a gitgud, what was the score to beat and did the user beat it
+									//Compare $gitgudScore > highscore['HighScore']['PercentDP']
+								
+								//if ($gitgudScore > highscore['HighScore']['PercentDP']) {
+								//	processWebhook($hooks['url']);
+								//}
+								break;
+							default:
+								//Process a default return of value not verified
+								echo "No hooks criteria matched";
+						}
+					}
+				}
+				
+			}
 			
 			$sql2 = "INSERT INTO sm_scores (song_dir,song_id,title,pack,difficulty,stepstype,charthash,username,profile_id,profile_type,grade,score,percentdp,modifiers,datetime,survive_seconds,life_remaining_seconds,disqualified,max_combo,stage_award,peak_combo_award,player_guid,machine_guid,hit_mine,avoid_mine,checkpoint_miss,miss,w5,w4,w3,w2,w1,checkpoint_hit,let_go,held,missed_hold,stream,voltage,air,freeze,chaos,notes,taps_holds,jumps,holds,mines,hands,rolls,lifts,fakes) VALUES $sql1_values";
 			if (!mysqli_query($conn, $sql2)){

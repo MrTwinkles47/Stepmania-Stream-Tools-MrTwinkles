@@ -5,6 +5,16 @@
 
 //include("config.php");
 
+//-------Polyfill Function---------//
+
+// based on original work from the PHP Laravel framework
+if (!function_exists('str_contains')) {
+    function str_contains($haystack, $needle) {
+        return $needle !== '' && mb_strpos($haystack, $needle) !== false;
+    }
+}
+
+//---------SMR Functions---------// 
 $conn = mysqli_connect(dbhost, dbuser, dbpass, db);
 if(! $conn ) {die('Could not connect: ' . mysqli_error($conn));}
 $conn->set_charset("utf8mb4");

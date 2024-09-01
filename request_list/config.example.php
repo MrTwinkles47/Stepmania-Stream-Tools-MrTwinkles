@@ -56,4 +56,7 @@ $max_num = 3;
 //Default value is "0.1" or top 10% of played songs
 $topPercent = 0.1;
 
+//Enable webhook check functionality 
+$enableWebHook = false;
+
 ?>

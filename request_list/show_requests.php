@@ -68,7 +68,8 @@ function rand_gradient(string $pack){
 	}
   
     //Giving values to the linear gradiant.
-	$background = "linear-gradient(".$direction."deg, rgb({$colorRGB[0][0]},{$colorRGB[0][1]},{$colorRGB[0][2]}), rgb({$colorRGB[1][0]},{$colorRGB[1][1]},{$colorRGB[1][2]}))";
+		$background = "linear-gradient(".$direction."deg, rgb({$colorRGB[0][0]},{$colorRGB[0][1]},{$colorRGB[0][2]}), rgb({$colorRGB[1][0]},{$colorRGB[1][1]},{$colorRGB[1][2]}))";
+
 
     return (string)$background;
 }
@@ -202,7 +203,7 @@ if(!is_array($ids) || empty($ids)){
 }else{
 	$oldid = min($ids);
 }
-	
+
 echo "<span id=\"oldid\" style=\"display:none;\">$oldid</span>";
 echo "
 </div>
