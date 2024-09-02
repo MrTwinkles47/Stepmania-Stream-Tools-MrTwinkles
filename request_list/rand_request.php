@@ -38,7 +38,7 @@ function request_song($song_id, $requestor, $tier, $twitchid, $broadcaster, $req
 
 }
 
-function build_whereclause($stepstype,$difficulty,$table){
+function build_whereclause($stepstype,$difficulty,$meter,$table){
 	//build WHERE clause for stepstype/difficulty
 	$whereTypeDiffClause = array();
 	$whereTypeDiffClauseStr = "";
@@ -137,6 +137,12 @@ function get_average_percentDP(string $profileName, string $whereTypeDiffClause)
 		$average = 0.5; 
 		//die("Error calculating the average score! " . mysqli_error($conn));
 	}
+	if(!empty($meter)){
+		if($table != 'sm_notedata'){
+			$table = 'sm_notedata';
+		}
+		$whereTypeDiffClause = $whereTypeDiffClause . "AND $table.meter LIKE '$meter' ";
+	}
 
 	return (float)$average;
 }
@@ -200,12 +206,13 @@ $difficulty = "";
 //get scoring type
 global $scoreType;
 
-//parse request stepstype and/or difficulty
+//parse request stepstype/difficulty/meter
 if(isset($_GET["song"]) && !empty($_GET["song"])){
 	$commandArgs = parseCommandArgs($_GET["song"],$user,$broadcaster);
 	$song = $commandArgs["song"];
-	$stepstype = $commandArgs["stepstype"];
+	$stepstype 	= $commandArgs["stepstype"];
 	$difficulty = $commandArgs["difficulty"];
+	$meter 		= $commandArgs['meter'];
 }
 
 //standard random request from songs that have at least been played once
@@ -213,7 +220,7 @@ if($_GET["random"] == "random"){
 
 	$request_type = "random";
 
-	$whereTypeDiffClause = build_whereclause($stepstype,$difficulty,"sm_songsplayed");
+	$whereTypeDiffClause = build_whereclause($stepstype,$difficulty,$meter,"sm_songsplayed");
 
 	$sql = "SELECT sm_songs.id AS id,sm_songs.title AS title,sm_songs.subtitle AS subtitle,sm_songs.artist AS artist,sm_songs.pack AS pack 
 	FROM sm_songsplayed 
@@ -232,6 +239,7 @@ if($_GET["random"] == "random"){
 		$i=1;
 		while(($row = mysqli_fetch_assoc($retval)) && ($i <= $num)) {
 			if(!recently_played($row["id"],1) && check_stepstype($broadcaster,$row["id"]) && check_meter($broadcaster,$row["id"])){
+				$difficulty = meter_to_difficulty($row["id"],$stepstype,$difficulty,$meter,$user);
 				request_song($row["id"], $user, $tier, $twitchid, $broadcaster, $request_type, $stepstype, $difficulty);
 				$displayModeDiff = display_ModeDiff(array('stepstype' => $stepstype,'difficulty' => $difficulty));
 				$displayArtist = get_duplicate_song_artist ($row["id"]);
@@ -283,7 +291,7 @@ if($_GET["random"] == "portal"){
 
 	$request_type = "portal";
 
-	$whereTypeDiffClause = build_whereclause($stepstype,$difficulty,"sm_notedata");
+	$whereTypeDiffClause = build_whereclause($stepstype,$difficulty,$meter,"sm_notedata");
 
 	$sql = "SELECT sm_songs.id AS id,sm_songs.title AS title,sm_songs.subtitle AS subtitle,sm_songs.artist AS artist,sm_songs.pack AS pack 
 	FROM sm_songs 
@@ -298,6 +306,7 @@ if($_GET["random"] == "portal"){
 			$i=1;
 			while(($row = mysqli_fetch_assoc($retval)) && ($i <= $num)) {
 				if(!recently_played($row["id"],1) && check_stepstype($broadcaster,$row["id"]) && check_meter($broadcaster,$row["id"])){
+					$difficulty = meter_to_difficulty($row["id"],$stepstype,$difficulty,$meter,$user);
 					request_song($row["id"], $user, $tier, $twitchid, $broadcaster, $request_type, $stepstype, $difficulty);
 					$displayModeDiff = display_ModeDiff(array('stepstype' => $stepstype,'difficulty' => $difficulty));
 					$displayArtist = get_duplicate_song_artist ($row["id"]);
@@ -318,7 +327,7 @@ if($_GET["random"] == "unplayed"){
 
 	$request_type = "unplayed";
 
-	$whereTypeDiffClause = build_whereclause($stepstype,$difficulty,"sm_notedata");
+	$whereTypeDiffClause = build_whereclause($stepstype,$difficulty,$meter,"sm_notedata");
 
 	$sql = "SELECT sm_songs.id AS id,sm_songs.title AS title,sm_songs.subtitle AS subtitle,sm_songs.artist AS artist,sm_songs.pack AS pack 
 	FROM sm_songs
@@ -337,6 +346,7 @@ if($_GET["random"] == "unplayed"){
 			$i=1;
 			while(($row = mysqli_fetch_assoc($retval)) && ($i <= $num)) {
 				if(!recently_played($row["id"],1) && check_stepstype($broadcaster,$row["id"]) && check_meter($broadcaster,$row["id"])){
+					$difficulty = meter_to_difficulty($row["id"],$stepstype,$difficulty,$meter,$user);
 					request_song($row["id"], $user, $tier, $twitchid, $broadcaster, $request_type, $stepstype, $difficulty);
 					$displayModeDiff = display_ModeDiff(array('stepstype' => $stepstype,'difficulty' => $difficulty));
 					$displayArtist = get_duplicate_song_artist ($row["id"]);
@@ -356,12 +366,12 @@ if($_GET["random"] == "top"){
 
 	$request_type = "top";
 	//if(empty($stepstype)){$stepstype = '%';}
-	$whereTypeDiffClause = build_whereclause($stepstype,$difficulty,"sm_songsplayed");
+	$whereTypeDiffClause = build_whereclause($stepstype,$difficulty,$meter,"sm_songsplayed");
 
 	$sql = "SELECT sm_songs.id AS id,sm_songs.title AS title,sm_songs.subtitle AS subtitle,sm_songs.artist AS artist,sm_songs.pack AS pack,numplayed,t2.stepstype AS stepstype  
 			FROM sm_songs 
 			JOIN 
-				(SELECT song_id,SUM(numplayed) AS numplayed,stepstype 
+				(SELECT sm_songsplayed.song_id,SUM(numplayed) AS numplayed,sm_songsplayed.stepstype 
 				FROM sm_songsplayed
 				WHERE song_id>0 AND numplayed>1 AND username LIKE '$profileName' $whereTypeDiffClause  
 				GROUP BY song_id,stepstype 
@@ -376,6 +386,7 @@ if($_GET["random"] == "top"){
 		$i=1;
 		while(($row = mysqli_fetch_assoc($retval)) && ($i <= $num)) {
 			if(!recently_played($row["id"],1) && check_stepstype($broadcaster,$row["id"]) && check_meter($broadcaster,$row["id"])){
+				$difficulty = meter_to_difficulty($row["id"],$stepstype,$difficulty,$meter,$user);
 				request_song($row["id"], $user, $tier, $twitchid, $broadcaster, $request_type, $row['stepstype'], $difficulty);
 				$displayModeDiff = display_ModeDiff(array('stepstype' => $stepstype,'difficulty' => $difficulty));
 				$displayArtist = get_duplicate_song_artist ($row["id"]);
@@ -425,8 +436,8 @@ if($_GET["random"] == "gitgud"){
 
 	$request_type = "gitgud";
 	
-	$whereTypeDiffClause = build_whereclause($stepstype,$difficulty,"sm_scores");
-	$whereTypeDiffClauseSP = build_whereclause($stepstype,$difficulty,"sm_songsplayed");
+	$whereTypeDiffClause = build_whereclause($stepstype,$difficulty,$meter,"sm_scores");
+	$whereTypeDiffClauseSP = build_whereclause($stepstype,$difficulty,$meter,"sm_songsplayed");
 
 	$topTotal = get_top_percent_played_songs($profileName,$whereTypeDiffClauseSP);
 	$averagePercentDP = get_average_percentDP($profileName,$whereTypeDiffClause);
@@ -507,7 +518,7 @@ die();
 //roll command responds with 3 random songs that the user can then request with "requestid"
 if($_GET["random"] == "roll"){
 
-	$whereTypeDiffClause = build_whereclause($stepstype,$difficulty,"sm_songsplayed");
+	$whereTypeDiffClause = build_whereclause($stepstype,$difficulty,$meter,"sm_songsplayed");
 
 	$sql = "SELECT sm_songs.id AS id,sm_songs.title AS title,sm_songs.subtitle AS subtitle,sm_songs.artist AS artist,sm_songs.pack AS pack 
 	FROM sm_songsplayed 
@@ -573,7 +584,7 @@ if($_GET["random"] == "theusual"){
 	
 	$request_type = "theusual";
 
-	$whereTypeDiffClause = build_whereclause($stepstype,$difficulty,"sm_notedata");
+	$whereTypeDiffClause = build_whereclause($stepstype,$difficulty,$meter,"sm_notedata");
 	
 	$sql = "SELECT sm_songs.id AS id,sm_songs.title AS title,sm_songs.subtitle AS subtitle,sm_songs.artist AS artist,sm_songs.pack AS pack,idcount    
 			FROM sm_songs  
@@ -597,6 +608,7 @@ if($_GET["random"] == "theusual"){
 		$i=1;
 		while(($row = mysqli_fetch_assoc($retval)) && ($i <= $num)) {
 			if(!recently_played($row["id"],1) && check_stepstype($broadcaster,$row["id"]) && check_meter($broadcaster,$row["id"])){
+				$difficulty = meter_to_difficulty($row["id"],$stepstype,$difficulty,$meter,$user);
 				request_song($row["id"], $user, $tier, $twitchid, $broadcaster, $request_type, $stepstype, $difficulty);
 				$displayArtist = get_duplicate_song_artist ($row["id"]);
 				echo ("Of course @$user would request " . trim($row["title"]." ".$row["subtitle"]).$displayArtist. " from " . $row["pack"] . ". HoW oRiGiNaL! ");
@@ -618,7 +630,7 @@ if(!empty($_GET["random"]) && $_GET["random"] != "random"){
 		if(isset($_GET["type"])){$request_type = mysqli_real_escape_string($conn,strtolower($_GET["type"]));}
 		$random = htmlspecialchars($random);
 
-		$whereTypeDiffClause = build_whereclause($stepstype,$difficulty,"sm_notedata");
+		$whereTypeDiffClause = build_whereclause($stepstype,$difficulty,$meter,"sm_notedata");
 		
         $sql = "SELECT sm_songs.id AS id,sm_songs.title AS title,sm_songs.subtitle AS subtitle,sm_songs.artist AS artist,sm_songs.pack AS pack 
 		FROM sm_songs 
@@ -634,6 +646,7 @@ if(!empty($_GET["random"]) && $_GET["random"] != "random"){
 			$i=1;
     		while(($row = mysqli_fetch_assoc($retval)) && ($i <= $num)) {
 				if(!recently_played($row["id"],1) && check_stepstype($broadcaster,$row["id"]) && check_meter($broadcaster,$row["id"])){
+					$difficulty = meter_to_difficulty($row["id"],$stepstype,$difficulty,$meter,$user);
 					request_song($row["id"], $user, $tier, $twitchid, $broadcaster, $request_type, $stepstype, $difficulty);
 					$displayArtist = get_duplicate_song_artist ($row["id"]);
 					$displayModeDiff = display_ModeDiff(array('stepstype' => $stepstype,'difficulty' => $difficulty));
