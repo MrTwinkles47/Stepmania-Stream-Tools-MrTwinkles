@@ -24,3 +24,14 @@ CREATE TABLE `sm_webhooks` (
   `qualifier` int(11) DEFAULT NULL,
   `jwt` varchar(512) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+ALTER TABLE `sm_webhooks`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+COMMIT;
+
+ALTER TABLE `sm_webhooks`
+  ADD PRIMARY KEY (`id`) USING BTREE;
+  
+
+-- force a rebuild of the song cache
+UPDATE `sm_songs` SET `checksum` = NULL;

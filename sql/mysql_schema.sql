@@ -88,7 +88,7 @@ REPLACE INTO `sm_grade_tiers` (`percentdp`, `ddr_tier`, `ddr_grade`, `itg_tier`,
 --
 
 CREATE TABLE `sm_notedata` (
-  `id` mediumint(9) NOT NULL,
+  `id` int(11) NOT NULL,
   `song_id` mediumint(9) DEFAULT NULL,
   `song_dir` mediumtext DEFAULT NULL,
   `chart_name` text DEFAULT NULL,
@@ -103,7 +103,7 @@ CREATE TABLE `sm_notedata` (
   `display_bpm` varchar(50) DEFAULT NULL,
   `stepfile_name` mediumtext DEFAULT NULL,
   `datetime` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ROW_FORMAT=DYNAMIC;
 
 -- --------------------------------------------------------
 
@@ -118,7 +118,7 @@ CREATE TABLE `sm_requestors` (
   `whitelisted` enum('true','false') DEFAULT 'false',
   `banned` enum('true','false') DEFAULT 'false',
   `dateadded` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -138,7 +138,7 @@ CREATE TABLE `sm_requests` (
   `stepstype` tinytext DEFAULT NULL,
   `difficulty` tinytext DEFAULT NULL,
   `timestamp` datetime DEFAULT NULL ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -198,7 +198,7 @@ CREATE TABLE `sm_scores` (
   `rolls` smallint(6) DEFAULT NULL,
   `lifts` smallint(6) DEFAULT NULL,
   `fakes` smallint(6) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ROW_FORMAT=DYNAMIC;
 
 -- --------------------------------------------------------
 
@@ -207,7 +207,7 @@ CREATE TABLE `sm_scores` (
 --
 
 CREATE TABLE `sm_songs` (
-  `id` mediumint(9) NOT NULL,
+  `id` int(11) NOT NULL,
   `title` mediumtext DEFAULT NULL,
   `subtitle` mediumtext DEFAULT NULL,
   `artist` mediumtext DEFAULT NULL,
@@ -225,7 +225,7 @@ CREATE TABLE `sm_songs` (
   `added` datetime DEFAULT NULL,
   `checksum` varchar(50) DEFAULT NULL,
   `scraper` tinyint(4) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ROW_FORMAT=DYNAMIC;
 
 -- --------------------------------------------------------
 
@@ -248,7 +248,19 @@ CREATE TABLE `sm_songsplayed` (
   `numplayed` int(11) DEFAULT NULL,
   `lastplayed` datetime DEFAULT NULL,
   `datetime` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Create Table `sm_webhooks`
+--
+CREATE TABLE `sm_webhooks` (
+  `id` int(11) NOT NULL,
+  `type` int(11) NOT NULL,
+  `url` varchar(2048) NOT NULL,
+  `criteria` varchar(20) DEFAULT NULL,
+  `qualifier` int(11) DEFAULT NULL,
+  `jwt` varchar(512) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Indexes for dumped tables
@@ -301,6 +313,12 @@ ALTER TABLE `sm_songsplayed`
   ADD INDEX `song_id` (`song_id`) USING BTREE;
 
 --
+-- Indexes for table `sm_webhooks`
+--
+ALTER TABLE `sm_webhooks`
+  ADD PRIMARY KEY (`id`) USING BTREE;
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -314,7 +332,7 @@ ALTER TABLE `sm_broadcaster`
 -- AUTO_INCREMENT for table `sm_notedata`
 --
 ALTER TABLE `sm_notedata`
-  MODIFY `id` mediumint(9) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `sm_requestors`
@@ -338,7 +356,7 @@ ALTER TABLE `sm_scores`
 -- AUTO_INCREMENT for table `sm_songs`
 --
 ALTER TABLE `sm_songs`
-  MODIFY `id` mediumint(9) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `sm_songsplayed`
@@ -348,16 +366,11 @@ ALTER TABLE `sm_songsplayed`
 COMMIT;
 
 --
--- Create Table `sm_webhooks`
+-- AUTO_INCREMENT for table `sm_webhooks`
 --
-CREATE TABLE `sm_webhooks` (
-  `id` int(11) NOT NULL,
-  `type` int(11) NOT NULL,
-  `url` varchar(2048) NOT NULL,
-  `criteria` varchar(20) DEFAULT NULL,
-  `qualifier` int(11) DEFAULT NULL,
-  `jwt` varchar(512) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+ALTER TABLE `sm_webhooks`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+COMMIT;
 
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
