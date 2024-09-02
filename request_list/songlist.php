@@ -208,7 +208,7 @@ $total_rows = mysqli_fetch_array($result)[0];
 $total_pages = ceil($total_rows / $no_of_records_per_page);
 
 //build mysql query as a string
-$base_sql = "SELECT sm_songs.id AS id,trim(concat(title,' ',subtitle,IF(bga=1,'  [V]',''))) AS title,music_length,added,artist,pack,sec_to_time(music_length) AS LENGTH,IF(sm_songs.display_bpm>0,sm_songs.display_bpm,NULL) AS BPM, 
+$base_sql = "SELECT sm_songs.id AS id,trim(concat(title,' ',subtitle)) AS title,music_length,added,artist,pack,sec_to_time(music_length) AS LENGTH,IF(sm_songs.display_bpm>0,sm_songs.display_bpm,NULL) AS BPM, 
 max(case when sm_notedata.stepstype LIKE 'dance-single' AND sm_notedata.difficulty LIKE 'Beginner' then sm_notedata.credit END) AS credit_BSP, 
 max(case when sm_notedata.stepstype LIKE 'dance-single' AND sm_notedata.difficulty LIKE 'Easy' then sm_notedata.credit END) AS credit_ESP, 
 max(case when sm_notedata.stepstype LIKE 'dance-single' AND sm_notedata.difficulty LIKE 'Medium' then sm_notedata.credit END) AS credit_MSP, 
