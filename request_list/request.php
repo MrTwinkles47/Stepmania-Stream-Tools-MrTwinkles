@@ -50,16 +50,8 @@ function request_song($song_id, $requestor, $tier, $twitchid, $broadcaster, $com
 		die("$requestor requested a song that appears to be too hard for $broadcaster!");
 	}
 
-	$stepstype 	= $commandArgs['stepstype'];
-	$difficulty = $commandArgs['difficulty'];
-	$meter 		= $commandArgs['meter'];
-
-	if(!empty($stepstype)){
-		$difficulty = meter_to_difficulty($song_id,$stepstype,$difficulty,$meter,$user);
-	}
-
-	if(!empty($stepstype) || !empty($difficulty)){
-		if(check_notedata($broadcaster,$song_id,$stepstype,$difficulty,$requestor) == FALSE){
+	if(!empty($commandArgs['stepstype']) || !empty($commandArgs['difficulty'])){
+		if(check_notedata($broadcaster,$song_id,$commandArgs['stepstype'],$commandArgs['difficulty'],$requestor) == FALSE){
 			die("$requestor requested a song without that steps-type or difficulty!");
 		}
 	}

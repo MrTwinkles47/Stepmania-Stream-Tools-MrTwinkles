@@ -306,7 +306,7 @@ function parseCommandArgs($argsStr,$user,$broadcaster){
     global $conn;
 
     //build a blank array
-    $result = array('song'=>'','stepstype'=>'','difficulty'=>'','meter'=>'');
+    $result = array('song'=>'','stepstype'=>'','difficulty'=>'');
     //split string by '#', keeping the delimiter, and trimming
     $args = preg_split('/(?=#)/', $argsStr,-1,PREG_SPLIT_NO_EMPTY);
     $args = array_map("trim",$args);
@@ -378,49 +378,43 @@ function parseCommandArgs($argsStr,$user,$broadcaster){
     }elseif(count($args) >= 1){
         //$args = array_splice($args,1);
         foreach ($args as $arg){
-            $arg = trim(strtolower($arg));
-            if(!is_numeric($arg)){
-                switch (strtolower($arg)){
-                    case "single":
-                    case "singles":
-                    case "singlets":
-                        $result['stepstype'] = "dance-single";
-                    break;
-                    case "double":
-                    case "doubles":
-                    case "doublays":
-                        $result['stepstype'] = "dance-double";
-                    break;
-                    case "beginner":
-                        $result['difficulty'] = "Beginner";
-                    break;
-                    case "easy":
-                    case "basic":
-                    case "light":
-                        $result['difficulty'] = "Easy";
-                    break;
-                    case "medium":
-                    case "standard":
-                        $result['difficulty'] = "Medium";
-                    break;
-                    case "hard":
-                    case "heavy":
-                    case "expert":
-                        $result['difficulty'] = "Hard";
-                    break;
-                    case "challenge":
-                    case "oni":
-                        $result['difficulty'] = "Challenge";
-                    break;
-                    case "edit":
-                        $result['difficulty'] = "Edit";
-                    break;
-                    default:
-                        die("$user gave invalid steps-type or difficulty.");
-                }
-            }elseif(is_numeric($arg)){
-                //user specified a #meter instead of a difficulty name
-                $result['meter'] = $arg;
+            switch (strtolower($arg)){
+                case "single":
+                case "singles":
+                case "singlets":
+                    $result['stepstype'] = "dance-single";
+                break;
+                case "double":
+                case "doubles":
+                case "doublays":
+                    $result['stepstype'] = "dance-double";
+                break;
+                case "beginner":
+                    $result['difficulty'] = "Beginner";
+                break;
+                case "easy":
+                case "basic":
+                case "light":
+                    $result['difficulty'] = "Easy";
+                break;
+                case "medium":
+                case "standard":
+                    $result['difficulty'] = "Medium";
+                break;
+                case "hard":
+                case "heavy":
+                case "expert":
+                    $result['difficulty'] = "Hard";
+                break;
+                case "challenge":
+                case "oni":
+                    $result['difficulty'] = "Challenge";
+                break;
+                case "edit":
+                    $result['difficulty'] = "Edit";
+                break;
+                default:
+                    die("@$user gave invalid steps-type or difficulty.");
             }
         }
     }
@@ -431,43 +425,24 @@ function parseCommandArgs($argsStr,$user,$broadcaster){
         $retval0 = mysqli_query( $conn, $sql0 );
         if(mysqli_num_rows($retval0) == 1){
             $row0 = mysqli_fetch_assoc($retval0);
-            //set broadcaster limit as stepstype
             $result['stepstype'] = $row0["stepstype"];
         }
-        if((!empty($result['difficulty']) || !empty($result['meter'])) && empty($result['stepstype'])){
+        if(!empty($result['difficulty']) && empty($result['stepstype'])){
             //no stepstype in sm_broadcaster and only difficulty specified
             die("@$user didn't specify a steps-type!");
         }
     }elseif(!empty($result['stepstype'])){
-        //stepstype is specificied, check with broadcaster limits  
         $sql0 = "SELECT * FROM sm_broadcaster WHERE broadcaster LIKE '$broadcaster'";
         $retval0 = mysqli_query( $conn, $sql0 );
         if(mysqli_num_rows($retval0) == 1){
             $row0 = mysqli_fetch_assoc($retval0);
             if($row0['stepstype'] != $result['stepstype'] && !empty($row0['stepstype'])){
-                //specified stepstype != broadcaster limits 
                 die("@$user => The broadcaster has limited requests to \"".$row0['stepstype']."\".");
-           
             }
         }
     }
 
     return $result;
-}
-
-function meter_to_difficulty($song_id,$stepstype,$difficulty,$meter,$user){
-    global $conn;
-
-    if(empty($difficulty) && !empty($meter)){
-        $sql = "SELECT * FROM sm_notedata WHERE song_id = '$song_id' AND stepstype LIKE '$stepstype' AND meter LIKE '$meter'";
-        $retval = mysqli_query( $conn, $sql);
-        if(mysqli_num_rows($retval) === 1){
-            $difficulty = mysqli_fetch_assoc($retval)['difficulty'];
-        }else{
-            die("$user gave an invalid meter: $stepstype [$meter].");
-        }
-    }
-    return $difficulty;
 }
 
 function display_ModeDiff($commandArgs){
