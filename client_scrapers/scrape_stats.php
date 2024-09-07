@@ -1,24 +1,39 @@
 <?php
 
-/////
-//SM5 Stats.xml scraper
-//The scraper will not run with out specifying at least one profile ID in config.php! 
-//Run this script in the background while you play. Each time the Stats.xml file changes,
-//SMR will recieve the data it needs to auto-complete requests.
-/////
+//  ____  __  __ ____                            _       
+// / ___||  \/  |  _ \ ___  __ _ _   _  ___  ___| |_ ___ 
+// \___ \| |\/| | |_) / _ \/ _\`| | | |/ _ \/ __| __/ __|
+//  ___) | |  | |  _ <  __/ (_| | |_| |  __/\__ \ |_\__ \
+// |____/|_|  |_|_| \_\___|\__, |\__,_|\___||___/\__|___/
+//                            |_|                        
+////
+// SM5 Stats.xml scraper
+// The scraper will not run with out specifying at least one profile ID in config.php! 
+// Run this script in the background while you play. Each time the Stats.xml file changes,
+// SMR will recieve the data it needs to auto-complete requests.
+////
 
 if (php_sapi_name() != "cli") {
 	// Not in cli-mode
 	die("Only support cli mode.");
 }
 // In cli-mode
-$versionClient = get_version();
-cli_set_process_title("SMRequests v$versionClient | StepMania Stats.XML Scraper");
+
+// include functions.php file
+if(is_readable(__DIR__."/functions.php") && !is_dir(__DIR__."/functions.php")){
+	require_once('functions.php');
+}else{
+	die("functions.php file not found!".PHP_EOL);
+}
 
 //process command arguments
+$whichScript = "StepMania Stats.XML Scraper";
 $frequency = 5;
 $fileTime = "";
 $statsXMLfilename = "Stats.xml";
+
+$versionClient = get_version();
+cli_set_process_title("SMRequests v$versionClient | $whichScript");
 
 if ($argc > 1){
 	$argv = array_splice($argv,1);
@@ -29,161 +44,6 @@ if ($argc > 1){
 		}else{
 			//inform user of changes to command arguments
 			die("Profile IDs are now configured in config.php!" . PHP_EOL);
-		}
-	}
-}
-
-//Welcome message
-echo "  ____  __  __ ____                            _       " . PHP_EOL;
-echo " / ___||  \/  |  _ \ ___  __ _ _   _  ___  ___| |_ ___ " . PHP_EOL;
-echo " \___ \| |\/| | |_) / _ \/ _\`| | | |/ _ \/ __| __/ __|" . PHP_EOL;
-echo "  ___) | |  | |  _ <  __/ (_| | |_| |  __/\__ \ |_\__ \\" . PHP_EOL;
-echo " |____/|_|  |_|_| \_\___|\__, |\__,_|\___||___/\__|___/" . PHP_EOL;
-echo "                            |_|                        " . PHP_EOL;
-echo "" . PHP_EOL;
-echo "Version: $versionClient";
-echo "" . PHP_EOL;
-echo "StepMania Stats.XML Scraper" . PHP_EOL;
-echo "*********************************************************" . PHP_EOL;
-echo "" . PHP_EOL;
-
-//start logging and cleanup old logs
-wh_log("Starting SMRequests v$versionClient StepMania Stats.XML Scraper...");
-//
-
-//Config
-if(!file_exists(__DIR__."/config.php") && !is_file(__DIR__."/config.php")){
-	wh_log("config.php file not found! You must configure these scripts before running. You can find an example config.php file at config.example.php.");
-	die("config.php file not found! You must configure these scripts before running. You can find an example config.php file at config.example.php.".PHP_EOL);
-}else{
-	require_once ('config.php');
-	if(CONFIG_VERSION != $versionClient || empty(CONFIG_VERSION) || empty($versionClient)){
-		wh_log("config.php file is from a previous version! You must build a new config.php from the current config.example.php file. Exiting...");
-		die("config.php file is from a previous version! You must build a new config.php from the current config.example.php file. Exiting...".PHP_EOL);
-	}
-}
-
-//////
-
-function check_environment(){
-	global $timezone;
-	//check for a php.ini file
-	$iniPath = php_ini_loaded_file();
-
-	if(!$iniPath){
-		//no config found
-		wh_log("ERROR: A php.ini configuration file was not found. Refer to the documentation on how to configure your php envirnment for SMRequests.");
-		die("A php.ini configuration file was not found. Refer to the documentation on how to configure your php envirnment for SMRequests." . PHP_EOL);
-	}
-	
-	//check php version and dump to log
-	switch(version_compare(PHP_VERSION,'7.4.33')){
-		case 0:
-			//version equal
-			break;
-		case -1:
-			//version too low
-			wh_log("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
-			die("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION . PHP_EOL);
-			break;
-		case 1:
-			//version higher than test
-			switch(version_compare(PHP_VERSION,'8.0.0')){
-				//php 8 support is in beta
-				case 0:
-					//version equal
-				case -1:
-					//version lower
-					//case for some PHP 7.4 version greater than 7.4.33
-					break;
-				case 1:
-					//version higher
-					if(version_compare(PHP_VERSION, '8.3.0','<')){
-						wh_log("PHP 8 support is in BETA! Please install the latest version of PHP 8.3. Your version is: " . PHP_VERSION);
-						die("PHP 8 support is in BETA! Please install the latest version of PHP 8.3. Your version is: " . PHP_VERSION . PHP_EOL);
-					}else{
-						wh_log("PHP 8 support is in BETA! Please report any bugs!");
-						echo("PHP 8 support is in BETA! Please report any bugs!" . PHP_EOL);
-					}
-					break;
-			}
-			break;
-	}
-
-	//set timezone
-	if($timezone){
-		if(!date_default_timezone_set($timezone)){
-			wh_log("Timezone not set in config.php or invalid.");
-			wh_log("Timezone set to: " . date_default_timezone_get() . ".");
-		}
-	}
-
-	//config found. check for enabled extensions
-	$expectedExts = array('curl','json','mbstring','SimpleXML');
-	$loadedPhpExt = get_loaded_extensions();
-	$missingExt = array();
-
-	foreach ($expectedExts as $ext){
-		if(!in_array($ext,$loadedPhpExt)){
-			//expected extenstion not found
-			$missingExt[] = $ext;
-		}
-	}
-	if(count($missingExt) > 0){
-		$ext = implode(', ',$missingExt);
-		wh_log("ERROR: $ext extension(s) not enabled. Please enable the extension(s) in your PHP config file: \"$iniPath\"");
-		die("$ext extension(s) not enabled. Please enable the extension(s) in your PHP config file: \"$iniPath\"" . PHP_EOL);
-	}
-}
-
-function wh_log($log_msg){
-    $log_filename = __DIR__."/log";
-    if (!file_exists($log_filename)) 
-    {
-        // create directory/folder uploads.
-        mkdir($log_filename, 0777, true);
-    }
-    $log_file_data = $log_filename.'/log_' . date('Y-m-d') . '.log';
-	$log_msg = rtrim($log_msg); //remove line endings
-    // if you don't add `FILE_APPEND`, the file will be erased each time you add a log
-    file_put_contents($log_file_data, date("Y-m-d H:i:s") . " -- [" . strtoupper(basename(__FILE__)) . "] : ". $log_msg . PHP_EOL, FILE_APPEND);
-}
-
-function get_version(){
-	//check the version of this script against the server
-	$versionFilename = __DIR__."/VERSION";
-
-	if(file_exists($versionFilename)){
-		$versionClient = file_get_contents($versionFilename);
-		$versionClient = json_decode($versionClient,TRUE);
-		$versionClient = $versionClient['version'];
-
-//		if($versionServer > $versionClient){
-//			wh_log("Script out of date. Client: ".$versionClient." | Server: ".$versionServer);
-//			die("WARNING! Your client scripts are out of date! Update your scripts to the latest version! Exiting..." . PHP_EOL);
-//		}
-	}else{
-		$versionClient = 0;
-		wh_log("Client version not found or unexpected value. Check VERSION file in client scrapers folder.");
-	}
-	return $versionClient;
-}
-
-function check_target_url(){
-	global $targetURL;
-	global $target_url;
-
-	if(isset($target_url) && !empty($target_url)){
-		$targetURL = $target_url;
-	}
-	if(!isset($targetURL) || empty($targetURL)){
-		die("No target URL found! Check the \"targetURL\" value in your config.php file" . PHP_EOL);
-	}elseif(filter_var($targetURL,FILTER_VALIDATE_URL) === FALSE){
-		die("\"$targetURL\" is not a valid URL. Check the \"targetURL\" value in your config.php file" . PHP_EOL);
-	}elseif(preg_match('/(smrequests\.)(com|dev)/',$targetURL)){
-		//this is a hosted domain
-		if(!preg_match('/(https:\/\/.+\.smrequests\.)(com|dev)(?!\/)/',$targetURL)){
-			die("\"$targetURL\" is not a valid URL for the SMRequests hosted service. Check the \"targetURL\" value in your config.php file" . PHP_EOL);
 		}
 	}
 }
@@ -228,32 +88,6 @@ function process_USBProfileDir(string $USBProfileDir){
 	}
 	if(!is_array($USBProfileDir)){$USBProfileDir = array($USBProfileDir);}
 	return (array)$USBProfileDir;
-}
-
-function fixEncoding(string $line){
-	//detect and convert ascii, et. al directory string to UTF-8 (Thanks, StepMania!)
-	//96.69% of the time, the encoding error is in a Windows filename
-	//Project OutFox Alpha 4.12 fixed most of the character encoding issues, but this function will remain for legacy support
-	$encoding = mb_detect_encoding($line,'UTF-8,CP1252,ASCII,ISO-8859-1');
-	$oldLine = $line;
-	if($encoding != 'UTF-8'){
-		wh_log( "Invalid UTF-8 detected ($encoding). Converting...");
-		$line = mb_convert_encoding($line,'UTF-8',$encoding);
-		wh_log("Text converted from: \"" . $oldLine . "\" to: \"" . $line . "\".");
-	}elseif($encoding == FALSE || empty($encoding)){
-		//encoding not detected, assuming 'ISO-8859-1', again, thanks, StepMania.
-		$encoding = 'ISO-8859-1';
-		wh_log("Invalid UTF-8 detected ($encoding) (fallback). Converting...");
-		$line = mb_convert_encoding($line,'UTF-8',$encoding);
-		wh_log("Text converted from: \"" . $oldLine . "\" to: \"" . $line . "\".");
-	}
-	//afer conversion we check AGAIN to confirm the new line is encoded as UTF-8
-	if(!mb_check_encoding($line,'UTF-8')){
-		//string still has invalid characters, give up and remove them completely
-		$line = mb_convert_encoding($line,'UTF-8','UTF-8');
-		wh_log("Failed additional check. UTF-8,UTF-8 converted line from: \"" . $oldLine . "\" to: \"" . $line . "\".");
-	}
-	return (string) $line;
 }
 
 function parseXmlErrors($errors, string $xml_file){
@@ -486,60 +320,25 @@ function statsXMLtoArray (array $file){
 	return (array) $stats_arr; 
 }
 
-function curlPost(string $postSource, array $postData){
-	global $targetURL;
-	global $security_key;
-	global $offlineMode;
-	$return = FALSE;
-	$versionClient = get_version();
-	//add the security_key to the http header
-	if(!isset($security_key) || empty($security_key)){
-		die("No security_key found! Check the \"security_key\" value in your config.php file" . PHP_EOL);
-	}
-	$security_keyToken = base64_encode($security_key);
-	$jsMicro = microtime(true);
-	$jsonArray = array('source' => $postSource, 'version' => $versionClient, 'offline' => $offlineMode, 'data' => $postData);
-	//encode array as json
-	$post = json_encode($jsonArray);
-	unset($postData,$jsonArray); //memory leak
-	wh_log ("Creating JSON took: " . round(microtime(true) - $jsMicro,3) . " secs.");
-	$errorJson = json_last_error();
-	if($errorJson !== JSON_ERROR_NONE){
-		//there was an error with the json string
-		wh_log(json_last_error_msg());
-		die(json_last_error_msg().PHP_EOL);
-	}
-	//compress post data
-	$post = gzencode($post,6);
-	//this curl method only works with PHP 5.5+
-	$ch = curl_init();
-	curl_setopt($ch, CURLOPT_URL,$targetURL."/status.php?$postSource");
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json', 'Content-Encoding: gzip', "Key: $security_keyToken"));
-	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); //if true, must specify cacert.pem location in php.ini
-	curl_setopt($ch, CURLOPT_ENCODING,'gzip,deflate');
-	curl_setopt($ch, CURLOPT_POST,1); 
-	curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
-	curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-	$result = curl_exec ($ch);
-	if($result === FALSE){
-		echo "Curl error: ".curl_error($ch) . PHP_EOL;
-		wh_log("Curl error: ".curl_error($ch));
-	}
-	if(curl_getinfo($ch, CURLINFO_HTTP_CODE) < 400){
-		echo $result; //echo from the server-side script
-		wh_log($result);
-		wh_log("cURL exec took: " . round(curl_getinfo($ch)['total_time_us'] / 1000000,3)." secs");
-		$return = TRUE;
-	}else{
-		echo "There was an error communicating with $targetURL.".PHP_EOL;
-		wh_log("The server responded with error: " . curl_getinfo($ch, CURLINFO_HTTP_CODE));
-		echo "The server responded with error: " . curl_getinfo($ch, CURLINFO_HTTP_CODE) . PHP_EOL;
-	}
-	curl_close ($ch);
+// show welcome message
+show_welcome_message($versionClient,$whichScript);
 
-	return (bool)$return;
+//start logging and cleanup old logs
+wh_log("Starting SMRequests v$versionClient $whichScript...");
+wh_log_purge();
+
+// include config.php file
+if(is_readable(__DIR__."/config.php") && !is_dir(__DIR__."/config.php")){
+	require_once('config.php');
+	//check version of config.php
+	if(CONFIG_VERSION != $versionClient || empty(CONFIG_VERSION) || empty($versionClient)){
+		wh_log("config.php file is from a previous version! You must build a new config.php from the current config.example.php file. Exiting...");
+		die("config.php file is from a previous version! You must build a new config.php from the current config.example.php file. Exiting...".PHP_EOL);
+	}
+}else{
+	// config.php not found
+	wh_log("config.php file not found! You must configure these scripts before running. You can find an example config.php file at config.example.php.");
+	die("config.php file not found! You must configure these scripts before running. You can find an example config.php file at config.example.php.".PHP_EOL);
 }
 
 //check php environment
@@ -551,6 +350,7 @@ check_target_url();
 //process ProfileIDs
 if((empty($profileID) || $profileID == "") && !$USBProfile){
 	//no profile ID(s) / USB profiles not used
+	wh_log("No LocalProfile ID specified! You must specify at least 1 profile ID in config.php.");
 	die("No LocalProfile ID specified! You must specify at least 1 profile ID in config.php." . PHP_EOL);
 }
 //process local profiles
@@ -562,8 +362,8 @@ $USBProfileDir = process_USBProfileDir($USBProfileDir);
 //find stats.xml files
 //saveDir valid?
 if(empty($saveDir) || !file_exists($saveDir)){
-	wh_log("StepMania /Save directory is empty or invalid. Check your config.php.".PHP_EOL);
-	die("StepMania /Saveg directory is empty or invalid. Check your config.php.");
+	wh_log("StepMania /Save directory is empty or invalid. Check your config.php.");
+	die("StepMania /Save directory is empty or invalid. Check your config.php." . PHP_EOL);
 }
 $file_arr = find_statsxml ($saveDir,$profileID,$USBProfileDir);
 

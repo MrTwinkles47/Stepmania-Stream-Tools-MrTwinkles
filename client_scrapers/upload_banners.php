@@ -1,179 +1,66 @@
 <?php
 
-//
-//PHP StepMania song pack banner uploader
-//This script finds each banner image for each song group/pack and uploads it to SMR.
-//'file_uploads' must be enabled on the server for this script to work correctly
-//
+//  ____  __  __ ____                            _       
+// / ___||  \/  |  _ \ ___  __ _ _   _  ___  ___| |_ ___ 
+// \___ \| |\/| | |_) / _ \/ _\`| | | |/ _ \/ __| __/ __|
+//  ___) | |  | |  _ <  __/ (_| | |_| |  __/\__ \ |_\__ \
+// |____/|_|  |_|_| \_\___|\__, |\__,_|\___||___/\__|___/
+//                            |_|                        
+////
+// PHP StepMania song pack banner uploader
+// This script finds each banner image for each song group/pack and uploads it to SMR.
+// 'file_uploads' must be enabled on the server for this script to work correctly
+////
 
 if (php_sapi_name() != "cli") {
 	// Not in cli-mode
 	die("Only support cli mode.");
 }
 // In cli-mode
-$versionClient = get_version();
-cli_set_process_title("SMRequests v$versionClient | StepMania Song Pack Banner Uploader");
 
-//Welcome message
-echo "  ____  __  __ ____                            _       " . PHP_EOL;
-echo " / ___||  \/  |  _ \ ___  __ _ _   _  ___  ___| |_ ___ " . PHP_EOL;
-echo " \___ \| |\/| | |_) / _ \/ _\`| | | |/ _ \/ __| __/ __|" . PHP_EOL;
-echo "  ___) | |  | |  _ <  __/ (_| | |_| |  __/\__ \ |_\__ \\" . PHP_EOL;
-echo " |____/|_|  |_|_| \_\___|\__, |\__,_|\___||___/\__|___/" . PHP_EOL;
-echo "                            |_|                        " . PHP_EOL;
-echo "" . PHP_EOL;
-echo "Version: $versionClient";
-echo "" . PHP_EOL;
-echo "StepMania Song Pack Banner Uploader" . PHP_EOL;
-echo "*********************************************************" . PHP_EOL;
-echo "" . PHP_EOL;
-
-//start logging and cleanup old logs
-wh_log("Starting SMRequests v$versionClient Song Pack Banner Uploader...");
-//
-
-if(!file_exists(__DIR__."/config.php") && !is_file(__DIR__."/config.php")){
-	wh_log("config.php file not found! You must configure these scripts before running. You can find an example config.php file at config.example.php.");
-	die("config.php file not found! You must configure these scripts before running. You can find an example config.php file at config.example.php.".PHP_EOL);
+// include functions.php file
+if(is_readable(__DIR__."/functions.php") && !is_dir(__DIR__."/functions.php")){
+	require_once('functions.php');
 }else{
-	require_once ('config.php');
-	if(CONFIG_VERSION != $versionClient || empty(CONFIG_VERSION) || empty($versionClient)){
-		wh_log("config.php file is from a previous version! You must build a new config.php from the current config.example.php file. Exiting...");
-		die("config.php file is from a previous version! You must build a new config.php from the current config.example.php file. Exiting...".PHP_EOL);
-	}
+	die("functions.php file not found!".PHP_EOL);
 }
 
-function check_environment(){
-	global $timezone;
-	//check for a php.ini file
-	$iniPath = php_ini_loaded_file();
+$versionClient = get_version();
+$whichScript = "StepMania Song Pack Banner Uploader";
+cli_set_process_title("SMRequests v$versionClient | $whichScript");
 
-	if(!$iniPath){
-		//no config found
-		wh_log("ERROR: A php.ini configuration file was not found. Refer to the documentation on how to configure your php envirnment for SMRequests.");
-		die("A php.ini configuration file was not found. Refer to the documentation on how to configure your php envirnment for SMRequests." . PHP_EOL);
-	}
-	
-	//check php version and dump to log
-	switch(version_compare(PHP_VERSION,'7.4.33')){
-		case 0:
-			//version equal
-			break;
-		case -1:
-			//version too low
-			wh_log("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION);
-			die("Your PHP version is too low! Please install the latest version of PHP 7.4. Your version is: " . PHP_VERSION . PHP_EOL);
-			break;
-		case 1:
-			//version higher than test
-			switch(version_compare(PHP_VERSION,'8.0.0')){
-				//php 8 support is in beta
-				case 0:
-					//version equal
-				case -1:
-					//version lower
-					//case for some PHP 7.4 version greater than 7.4.33
-					break;
-				case 1:
-					//version higher
-					if(version_compare(PHP_VERSION, '8.3.0','<')){
-						wh_log("PHP 8 support is in BETA! Please install the latest version of PHP 8.3. Your version is: " . PHP_VERSION);
-						die("PHP 8 support is in BETA! Please install the latest version of PHP 8.3. Your version is: " . PHP_VERSION . PHP_EOL);
-					}else{
-						wh_log("PHP 8 support is in BETA! Please report any bugs!");
-						echo("PHP 8 support is in BETA! Please report any bugs!" . PHP_EOL);
-					}
-					break;
-			}
-			break;
-	}
-
-	//set timezone
-	if($timezone){
-		if(!date_default_timezone_set($timezone)){
-			wh_log("Timezone not set in config.php or invalid.");
-			wh_log("Timezone set to: " . date_default_timezone_get() . ".");
-		}
-	}
-
-	//config found. check for enabled extensions
-	$expectedExts = array('curl','json','mbstring','SimpleXML');
-	$loadedPhpExt = get_loaded_extensions();
-	$missingExt = array();
-
-	foreach ($expectedExts as $ext){
-		if(!in_array($ext,$loadedPhpExt)){
-			//expected extenstion not found
-			$missingExt[] = $ext;
-		}
-	}
-	if(count($missingExt) > 0){
-		$ext = implode(', ',$missingExt);
-		wh_log("ERROR: $ext extension(s) not enabled. Please enable the extension(s) in your PHP config file: \"$iniPath\"");
-		die("$ext extension(s) not enabled. Please enable the extension(s) in your PHP config file: \"$iniPath\"" . PHP_EOL);
-	}
-}
-
-function wh_log($log_msg){
-    $log_filename = __DIR__."/log";
-    if (!file_exists($log_filename)) 
-    {
-        // create directory/folder uploads.
-        mkdir($log_filename, 0777, true);
-    }
-    $log_file_data = $log_filename.'/log_' . date('Y-m-d') . '.log';
-	$log_msg = rtrim($log_msg); //remove line endings
-    // if you don't add `FILE_APPEND`, the file will be erased each time you add a log
-    file_put_contents($log_file_data, date("Y-m-d H:i:s") . " -- [" . strtoupper(basename(__FILE__)) . "] : ". $log_msg . PHP_EOL, FILE_APPEND);
-}
-
-function get_version(){
-	//check the version of this script against the server
-	$versionFilename = __DIR__."/VERSION";
-
-	if(file_exists($versionFilename)){
-		$versionClient = file_get_contents($versionFilename);
-		$versionClient = json_decode($versionClient,TRUE);
-		$versionClient = $versionClient['version'];
-
-//		if($versionServer > $versionClient){
-//			wh_log("Script out of date. Client: ".$versionClient." | Server: ".$versionServer);
-//			die("WARNING! Your client scripts are out of date! Update your scripts to the latest version! Exiting..." . PHP_EOL);
-//		}
-	}else{
-		$versionClient = 0;
-		wh_log("Client version not found or unexpected value. Check VERSION file in client scrapers folder.");
-	}
-	return $versionClient;
-}
-
-function check_target_url(){
-	global $targetURL;
-	global $target_url;
-
-	if(isset($target_url) && !empty($target_url)){
-		$targetURL = $target_url;
-	}
-	if(!isset($targetURL) || empty($targetURL)){
-		die("No target URL found! Check the \"targetURL\" value in your config.php file" . PHP_EOL);
-	}elseif(filter_var($targetURL,FILTER_VALIDATE_URL) === FALSE){
-		die("\"$targetURL\" is not a valid URL. Check the \"targetURL\" value in your config.php file" . PHP_EOL);
-	}elseif(preg_match('/(smrequests\.)(com|dev)/',$targetURL)){
-		//this is a hosted domain
-		if(!preg_match('/(https:\/\/.+\.smrequests\.)(com|dev)(?!\/)/',$targetURL)){
-			die("\"$targetURL\" is not a valid URL for the SMRequests hosted service. Check the \"targetURL\" value in your config.php file" . PHP_EOL);
-		}
-	}
-}
-
-function findFiles($directory) {
+function findFiles(string $directory) {
 	//find all directories in a directory and sort by modified time
     $dir_paths = array ();
 	foreach(glob("$directory/*", GLOB_ONLYDIR) as $filename) {
         $dir_paths[] = $filename;
 	}
 	usort( $dir_paths, function( $a, $b ) { return filemtime($b) - filemtime($a); } );
-    return $dir_paths;
+    
+	return (array)$dir_paths;
+}
+
+function add_additional_songs(array $packDirs){
+	//add any additional songs folder(s)
+	global $addSongsDir;
+
+	if(empty($addSongsDir)){
+		return((array) $packDirs);
+	}
+	
+	if(!is_array($addSongsDir)){
+		$addSongsDir = array($addSongsDir);
+	}
+
+	foreach($addSongsDir as $directory){
+		if(is_dir($directory)){
+			$packDirs[] = findFiles($directory);
+		}else{
+			wh_log("Additional songs directory: \"$directory\" does not exist. Skipping...");
+		}
+	}
+
+	return((array) $packDirs);
 }
 
 function isIgnoredPack($pack){
@@ -218,7 +105,7 @@ function get_banner($img_path){
 	return $return;
 }
 
-function does_banner_exist($file,$pack_name){
+/* function does_banner_exist($file,$pack_name){
 	//quick check to see if the banner is on the server
 	global $targetURL;
 	$return = FALSE;
@@ -232,7 +119,7 @@ function does_banner_exist($file,$pack_name){
 	curl_close($ch);
 	if($retcode == 200){$return = TRUE;}
 	return $return;
-}
+} */
 
 function clean_filename(string $filename){
 	//Trim
@@ -247,33 +134,40 @@ function clean_filename(string $filename){
 	return (string) $filename;
 }
 
-function curl_upload($file,$pack_name,$pack_name_old = null){
+function curlPostUpload(string $postSource, string $file, string $pack_name, string $pack_name_old = null){
 	global $targetURL;
 	global $security_key;
-	unset($ch,$post,$cFile);
 	$versionClient = get_version();
+
 	//add the security_key to the http header
 	if(!isset($security_key) || empty($security_key)){
 		die("No security_key found! Check the \"security_key\" value in your config.php file" . PHP_EOL);
 	}
 	$security_keyToken = base64_encode($security_key);
-	//special curl function to create the information needed to upload files
-	//renaming the banner images to be consistent with the pack name
-	$cFile = curl_file_create($file,'',$pack_name.'.'.strtolower(pathinfo($file,PATHINFO_EXTENSION)));
 	//add post data and file upload to the POST array
-	$metadata = json_encode(array('version' => $versionClient, 'pack_name_old'=> $pack_name_old));
-	$post = array('metadata' => $metadata, 'file_contents'=> $cFile);
-	//this curl method only works with PHP 5.5+
+	$metadata = array('source' => $postSource, 'version' => $versionClient, 'pack_name' => $pack_name, 'pack_name_old' => $pack_name_old, 'file_size' => filesize($file));
+	$metadata = json_encode($metadata);
+	//process file
+	if($postSource === "upload"){
+		//special curl function to create the information needed to upload files
+		//renaming the banner images to be consistent with the pack name
+		$cFile = curl_file_create($file,'',$pack_name.'.'.strtolower(pathinfo($file,PATHINFO_EXTENSION)));
+		$post = array('metadata' => $metadata, 'file_contents'=> $cFile);
+	}else{
+		$post = array('metadata' => $metadata);
+	}
+
+	//setup curl
 	$ch = curl_init();
-	curl_setopt($ch, CURLOPT_URL,$targetURL."/banners.php");
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($ch, CURLOPT_URL,$targetURL."/banners.php?" . $postSource);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
 	curl_setopt($ch, CURLOPT_HTTPHEADER, array("Key: $security_keyToken"));
-	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); //if true, must specify cacert.pem location in php.ini
+	curl_setopt($ch, CURLOPT_SSL_OPTIONS, CURLSSLOPT_NATIVE_CA);
 	curl_setopt($ch, CURLOPT_ENCODING,'gzip,deflate');
-	curl_setopt($ch, CURLOPT_POST,1); 
+	curl_setopt($ch, CURLOPT_POST, TRUE); 
 	curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
 	curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, TRUE);
 	$result = curl_exec ($ch);
 	if($result === FALSE){
 		echo "Curl error: ".curl_error($ch) . PHP_EOL;
@@ -281,18 +175,41 @@ function curl_upload($file,$pack_name,$pack_name_old = null){
 	}
 	if(curl_getinfo($ch, CURLINFO_HTTP_CODE) < 400){
 		//good response from the server
-		echo $result; //echo from the server-side script
-		wh_log($result);
-		$return = 0;
+		//echo $result; //echo from the server-side script
+		//wh_log($result);
 	}else{
 		//some kind of error
 		echo "There was an error communicating with $targetURL." . PHP_EOL;
 		wh_log("The server responded with error: " . curl_getinfo($ch, CURLINFO_HTTP_CODE));
 		echo "The server responded with error: " . curl_getinfo($ch, CURLINFO_HTTP_CODE) . PHP_EOL;
-		$return = 1;
+		$result = FALSE;
 	}
 	curl_close ($ch);
-	return $return;
+	unset($ch);
+
+	return $result;
+}
+
+// show welcome message
+show_welcome_message($versionClient,$whichScript);
+
+//start logging and cleanup old logs
+wh_log("Starting SMRequests v$versionClient $whichScript...");
+wh_log_purge();
+//
+
+// include config.php file
+if(is_readable(__DIR__."/config.php") && !is_dir(__DIR__."/config.php")){
+	require_once('config.php');
+	//check version of config.php
+	if(CONFIG_VERSION != $versionClient || empty(CONFIG_VERSION) || empty($versionClient)){
+		wh_log("config.php file is from a previous version! You must build a new config.php from the current config.example.php file. Exiting...");
+		die("config.php file is from a previous version! You must build a new config.php from the current config.example.php file. Exiting...".PHP_EOL);
+	}
+}else{
+	// config.php not found
+	wh_log("config.php file not found! You must configure these scripts before running. You can find an example config.php file at config.example.php.");
+	die("config.php file not found! You must configure these scripts before running. You can find an example config.php file at config.example.php.".PHP_EOL);
 }
 
 //check php environment
@@ -302,6 +219,7 @@ check_environment();
 check_target_url();
 
 echo "Finding and uploading pack banner images..." . PHP_EOL;
+$startTime = microtime(TRUE);
 
 //ready variables
 $banners_copied = $notFoundBanners = $cPacks = 0;
@@ -310,27 +228,20 @@ $fileSizeMax = 5242880; //5MB
 // find all the pack/group folders
 //songDir valid?
 if(empty($songsDir) || !file_exists($songsDir)){
-	wh_log("StepMania song directory is empty or invalid. Check your config.php.".PHP_EOL);
-	die("StepMania song directory is empty or invalid. Check your config.php.");
+	wh_log("StepMania song directory is empty or invalid. Check your config.php.");
+	die("StepMania song directory is empty or invalid. Check your config.php." . PHP_EOL);
 }
 $packDirs = findFiles($songsDir);
 
-//add any additional songs folder(s)
-if(!empty($addSongsDir)){
-	if(!is_array($addSongsDir)){
-		$addSongsDir = array($addSongsDir);
-	}
-	foreach($addSongsDir as $directory){
-		$packDirs[] = findFiles($directory);
-	}
-}
+// append any "Additional Songs" directories
+$packDirs = add_additional_songs($packDirs);
 
-$cPacks = count($packDirs);
-
-if ($cPacks == 0){
+if (count($packDirs) === 0){
 	wh_log("No pack/group folders found. Your StepMania /Songs directory may be located in \"AppData\""); 
 	die ("No pack/group folders found. Your StepMania /Songs directory may be located in \"AppData\"" . PHP_EOL);
 }
+
+echo(count($packDirs) . " packs found..." . PHP_EOL);
 
 $img_arr = array();
 
@@ -338,57 +249,104 @@ foreach ($packDirs as $path){
 	
 	$pack_name = $img_path = "";
 	//get pack name from folder
-	$pack_name = substr($path,strrpos($path,"/")+1);
+	$pack_name = basename($path);
+	//$pack_name = substr($path,strrpos($path,"/")+1);
+
 	//check if pack is to be ignored and skip if it is
-	if(!isIgnoredPack($pack_name)){
-		//pack is not ignored
-		//clean up pack name and replace spaces with underscore
-		$pack_name_old = strtolower(preg_replace('/\s+/', '_', trim($pack_name)));
-		$pack_name = strtolower(clean_filename($pack_name));
-		//look for any picture file in the pack directory
-		$img_path = glob("$path/*{jpg,JPG,jpeg,JPEG,png,PNG,gif,GIF,bmp,BMP}",GLOB_BRACE);
-		
-		if (isset($img_path) && !empty($img_path)){
-			if(count($img_path) > 1){
-				//more than 1 image found, let's search file names for which one is the banner
-				$img_path = get_banner($img_path);
-			}else{
-				//use the first result as the pack banner
-				$img_path = $img_path[0];
-			}
-			//check for filesize
-			$imgFileSize = filesize($img_path);
-			if ($imgFileSize == FALSE || $imgFileSize > $fileSizeMax){
-				echo($pack_name . "'s image file is too large: " . (round($imgFileSize / 1024 / 1024,2)) . "MB. Max size: " . ($fileSizeMax / 1024 / 1024) . "MB!" . PHP_EOL);
-				wh_log($pack_name . "'s image file is too large: " . (round($imgFileSize / 1024 / 1024,2)) . "MB. Max size: " . ($fileSizeMax / 1024 / 1024) . "MB!");
-			}else{
-				$img_arr[] = array('img_path' => $img_path,'pack_name' => $pack_name,'pack_name_old' => $pack_name_old);
-			}
-		}else{
-			echo "No banner image for ".$pack_name. PHP_EOL;
-			wh_log("No banner image for ".$pack_name);
-			$notFoundBanners++;
-		}
+	if(isIgnoredPack($pack_name)){
+		//pack is ignored. Skip it
+		continue;
 	}
+	
+	//clean up pack name and replace spaces with underscore
+	$pack_name_old = strtolower(preg_replace('/\s+/', '_', trim($pack_name)));
+	$pack_name = strtolower(clean_filename($pack_name));
+	//look for any picture file in the pack directory
+	$img_path = glob("$path/*{jpg,JPG,jpeg,JPEG,png,PNG,gif,GIF,bmp,BMP}",GLOB_BRACE);
+	
+	if(!isset($img_path) || empty($img_path) || $img_path === FALSE){
+		//no image found for banner or error occured
+		echo "No banner image for ".$pack_name. PHP_EOL;
+		wh_log("No banner image for ".$pack_name);
+		$notFoundBanners++;
+		continue;
+	}
+	
+	if(count($img_path) > 1){
+		//more than 1 image found, let's search file names for which one is the banner
+		$img_path = get_banner($img_path);
+	}else{
+		//use the first result as the pack banner
+		$img_path = $img_path[0];
+	}
+
+	//check for filesize
+	$imgFileSize = filesize($img_path);
+	if ($imgFileSize == FALSE || $imgFileSize > $fileSizeMax){
+		echo($pack_name . "'s image file is too large: " . (round($imgFileSize / 1024 / 1024,2)) . "MB. Max size: " . ($fileSizeMax / 1024 / 1024) . "MB!" . PHP_EOL);
+		wh_log($pack_name . "'s image file is too large: " . (round($imgFileSize / 1024 / 1024,2)) . "MB. Max size: " . ($fileSizeMax / 1024 / 1024) . "MB!");
+		continue;
+	}
+
+	//finally, add the image and metadate to the array
+	$img_arr[] = array('img_path' => $img_path,'pack_name' => $pack_name,'pack_name_old' => $pack_name_old);
+	
+}
+
+if(empty($img_arr)){
+	die("No banners found" . PHP_EOL);
 }
 
 foreach ($img_arr as $img){
-	//check if banner already on server
-	//if(does_banner_exist($img['img_path'],$img['pack_name'])){
-	//	echo "Banner for ". $img['pack_name'] . " already exists. Skipping...".PHP_EOL;
-	//}else{
-		//upload banner images
-		if(curl_upload($img['img_path'],$img['pack_name'],$img['pack_name_old']) === 0){
-			$banners_copied++;
+	//upload banner images
+	$result = curlPostUpload("upload",$img['img_path'],$img['pack_name'],$img['pack_name_old']);
+	if($result !== FALSE){
+		echo $result;
+		$banners_copied++;
+	}
+/* 	//check if banner exists
+	$bannerExist = curlPost("exist",$img['img_path'],$img['pack_name']);
+	if($bannerExist !== FALSE){
+		//Attempt to decode POST data.
+		$bannerExist = json_decode($bannerExist,TRUE);
+		//If json_decode failed, the JSON is invalid.
+		if(!is_array($bannerExist)){
+			echo('Received content contained invalid JSON!' . PHP_EOL);
 		}
-	//}
+		if($bannerExist['banner'] == "FALSE"){
+			//upload banner images
+			$result = curlPost("upload",$img['img_path'],$img['pack_name'],$img['pack_name_old']);
+			if($result !== FALSE){
+				echo $result;
+				$banners_copied++;
+			}
+		}
+
+	} */
+
 }
 
-$cPacks = $cPacks - $notFoundBanners;
-
 //STATS!
-echo "Uploaded ".$banners_copied." of ".$cPacks." banner images. Banners were not found for ".$notFoundBanners." packs." . PHP_EOL;
-wh_log("Uploaded ".$banners_copied." of ".$cPacks." banner images. Banners were not found for ".$notFoundBanners." packs.");
+$cPacks = count($packDirs) - $notFoundBanners;
+$endTime = microtime(TRUE) - $startTime;
+
+switch(TRUE){
+	case($endTime > 60):
+		$endTime = round($endTime / 60, 1);
+		$endTime = $endTime . " mins";
+		break;
+	case($endTime <= 60 && $endTime > 1):
+		$endTime = round($endTime, 0);
+		$endTime = $endTime . " secs";
+		break;
+	case($endTime < 1):
+		$endTime = round($endTime * 100, 0);
+		$endTime = $endTime . "ms";
+		break;
+}
+
+echo "Uploaded $banners_copied of $cPacks banner images in $endTime. Banners were not found for $notFoundBanners packs." . PHP_EOL;
+wh_log("Uploaded $banners_copied of $cPacks banner images in $endTime. Banners were not found for $notFoundBanners packs.");
 
 exit();
 ?>
