@@ -12,34 +12,54 @@
 
 //--------Configuration--------//
 
-include ('config.php');
-include ('misc_functions.php');
+require_once ('config.php');
+require_once ('misc_functions.php');
 
 //--------Accept the POSTed json string, validate, and check security--------//
-	
+
 //Make sure that it is a POST request.
 if(strcasecmp($_SERVER['REQUEST_METHOD'], 'POST') != 0){
-    echo('Request method must be POST!' . PHP_EOL);
+    die('Request method must be POST!' . PHP_EOL);
+}
+
+//Get access token/security key from http header
+if(isset($_SERVER['HTTP_KEY'])){
+	$keyToken = trim($_SERVER['HTTP_KEY']);
+	if(empty($keyToken)){
+		die("Error: No secrity key from client! Check your config.php." . PHP_EOL);
+	}
+	$keyToken = base64_decode($keyToken);
+	if($keyToken != $security_key){
+		die("Error: Incorrect security key: \"$keyToken\"! Check your config.php." . PHP_EOL);
+	}
+}else{
+	die("No valid HTTP security_key header" . PHP_EOL);
 }
  
 //Make sure that the content type of the POST request has been set to application/json
-$contentType = isset($_SERVER["CONTENT_TYPE"]) ? trim($_SERVER["CONTENT_TYPE"]) : '';
+$contentType = isset($_SERVER['CONTENT_TYPE']) ? trim($_SERVER['CONTENT_TYPE']) : '';
 if(strcasecmp($contentType, 'application/json') != 0){
-	echo('Content type must be: application/json' . PHP_EOL);
+	die('Content type must be: application/json' . PHP_EOL);
 }
  
 //Receive the RAW post data.
-$content = trim(file_get_contents("php://input"));
- 
+$content = file_get_contents("php://input");
+
+//Decode RAW post data, if usuing gzip
+$contentEncoding = isset($_SERVER['CONTENT_ENCODING']) ? trim($_SERVER['CONTENT_ENCODING']) : '';
+if(strcasecmp($contentEncoding, 'gzip')){
+	$content = gzdecode($content);
+}
+
 //Attempt to decode the incoming RAW post data from JSON.
-$jsonDecoded = json_decode($content, true);
+$jsonDecoded = json_decode($content, true, JSON_INVALID_UTF8_IGNORE);
  
 //If json_decode failed, the JSON is invalid.
 if(!is_array($jsonDecoded)){
-    echo('Received content contained invalid JSON!' . PHP_EOL);
+    die('Received content contained invalid JSON!' . PHP_EOL);
 }
 
-if (!isset($jsonDecoded['security_key']) || $jsonDecoded['security_key'] != $security_key || empty($jsonDecoded['security_key']) || !isset($jsonDecoded['source']) || empty($jsonDecoded['data'])){die("Fuck off" . PHP_EOL);}
+unset($conent);
 
 //--------Open mysql link--------//
 
@@ -47,7 +67,7 @@ $conn = mysqli_connect(dbhost, dbuser, dbpass, db);
 if(! $conn ) {die('Could not connect: ' . mysqli_error($conn));}
 $conn->set_charset("utf8mb4");
 
-function splitSongDir($song_dir){
+function splitSongDir(string $song_dir){
 	//This function splits the "song_dir" string into title and pack
 	
 	$splitDir = array();
@@ -60,16 +80,59 @@ function splitSongDir($song_dir){
 	$song_title = substr($song_title, strripos($song_title, "/")+1);
 	//return array containing the title and pack
 	$splitDir = array ('title' => $song_title, 'pack' => $song_pack);
-	return $splitDir;
+	return (array) $splitDir;
 }
 
-function lookupSongID ($song_dir){
+function processWebhook(string $url, string $message) {
+	$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+		curl_setopt($ch, CURLOPT_SSL_OPTIONS, CURLSSLOPT_NATIVE_CA);
+		curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+	$result = curl_exec ($ch);
+	// close cURL resource, and free up system resources
+	curl_close($ch);
+	return true;
+}
+
+function processCallStreamElements(string $url, string $jwt, string $message) {
+	$ch = curl_init();
+		curl_setopt_array($ch, [
+			  CURLOPT_URL => $url,
+			  CURLOPT_RETURNTRANSFER => true,
+			  CURLOPT_ENCODING => "",
+			  CURLOPT_MAXREDIRS => 10,
+			  CURLOPT_TIMEOUT => 30,
+			  CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+			  CURLOPT_CUSTOMREQUEST => "POST",
+			  CURLOPT_POSTFIELDS => "{\n  \"message\": \"". $message . "\"\n}",
+			  CURLOPT_HTTPHEADER => [
+				"Accept: Application/json",
+				"Authorization: Bearer " . $jwt,
+				"Content-Type: application/json"
+			  ],
+			]);	
+		
+	$result = curl_exec ($ch);
+	$err = curl_error($ch);
+	
+	// close cURL resource, and free up system resources
+	curl_close($ch);
+	
+	if ($err) {
+	  return $err;
+	} else {
+	  return true;
+	}
+}
+
+function lookupSongID (string $song_dir){
 	//This function looks up the song ID that matches the song_dir in the sm_songs db
 	global $conn;
 	$songInfo = array();
 	$song_ids = array();
 	//query for IDs matching the song_dir
-	$sql_id = "SELECT id, title, pack FROM sm_songs WHERE song_dir=\"{$song_dir}\" ORDER BY id ASC";
+	$sql_id = "SELECT id, title, pack FROM sm_songs WHERE song_dir=\"$song_dir\" ORDER BY id ASC";
 	$id_result = mysqli_query($conn, $sql_id);
 	if(mysqli_num_rows($id_result) == 1){
 		//1 result found - set array from query results
@@ -78,7 +141,7 @@ function lookupSongID ($song_dir){
 		//more than 1 result found - set array from split song_dir, but set id to non-zero minimum id
 		while ($row = mysqli_fetch_assoc($id_result)){
 			if ($row['id'] > 0){
-				$song_ids[] = $id;
+				$song_ids[] = $row['id'];
 			}
 		}
 		$song_id = min($song_ids);
@@ -87,7 +150,7 @@ function lookupSongID ($song_dir){
 		$song_pack = splitSongDir($song_dir)['pack'];
 		$songInfo = array('id' => $song_id, 'title' => $song_title, 'pack' => $song_pack);
 		//notify user that there are duplicate results
-		echo "Multiple possible IDs found for {$song_title} in {$song_pack}: {$song_ids}" . PHP_EOL;
+		echo "Multiple possible IDs found for $song_title in $song_pack: $song_ids" . PHP_EOL;
 	}elseif(mysqli_num_rows($id_result) == 0){
 		//no results found - set array from split song_dir and id=0
 		$song_id = 0;
@@ -97,7 +160,7 @@ function lookupSongID ($song_dir){
 		//notify user that an ID was not found in the sm_songs db
 		//echo "No song ID found for {$song_title} in {$song_pack}. Moving on...\n";
 	}
-	return $songInfo;
+	return (array)$songInfo;
 }
  
 function scrapeSongStart(){
@@ -108,7 +171,7 @@ function scrapeSongStart(){
 	$res = mysqli_query($conn, $sql_clear);
 
 	//check if this is the first run of the scraper
-	$sql_clear = "SELECT * FROM sm_songs";
+	$sql_clear = "SELECT id FROM sm_songs WHERE installed = 1";
 	$res = mysqli_query($conn, $sql_clear);
 	if (mysqli_num_rows($res) == 0){
 		return TRUE;
@@ -139,180 +202,204 @@ function scrapeSongEnd($cFiles){
 		mysqli_query($conn,$sql_getstats);
 
 	//clear scraper field
-		$sql_getstats = "UPDATE sm_songs SET scraper=NULL";
-		mysqli_query($conn,$sql_getstats);	
-
+		//$sql_getstats = "UPDATE sm_songs SET scraper=NULL";
+		//mysqli_query($conn,$sql_getstats);	
 
 	//Let's show some stats!
-	echo "Scraped {$cFiles} cache file(s) adding {$newSongs} new song(s) and updating {$updatedSongs} song(s) resulting in a new total of {$totalSongs} songs in the database!" . PHP_EOL;
-	echo "{$addNotInstalledSongs} song(s) marked as 'not installed', totaling {$notInstalledSongs} 'not installed' song(s)." . PHP_EOL;
+	echo "Scraped $cFiles cache file(s) adding $newSongs new song(s) and updating $updatedSongs song(s) resulting in a new total of $totalSongs songs in the database!" . PHP_EOL;
+	echo "$addNotInstalledSongs song(s) marked as 'not installed', totaling $notInstalledSongs 'not installed' song(s)." . PHP_EOL;
 
 }
 
-function scrapeSong($songCache_array){
+function scrapeSong(array $songCacheFiles){
 	//This function processes the song cache arrays and inserts/updates song records into the sm_songs table
 	global $conn;
+
+	foreach ($songCacheFiles as $songCacheFile){
 	
-	$metadata = $notedata_array = array();
-	$song_dir = $title = $subtitle = $artist = $pack = $display_bpm = $song_credit = $stepstype = $difficulty = $stored_hash = $file_hash = "";
-	$music_length = $bga = 0;
+		$metadata = $notedata_array = array();
+		$song_dir = $title = $subtitle = $artist = $pack = $display_bpm = $song_credit = $stored_hash = $file_hash = $sql_notedata_values = $scraper = "";
+		$music_length = $bga = 0;
+		$installed = 1;
 
-	$metadata = $songCache_array['metadata'];
-	$file_hash = $metadata['file_hash'];
-	$file = $metadata['file'];
-	$notedata_array = $songCache_array['notedata'];
+		$metadata = $songCacheFile['metadata'];
+		$file_hash = $metadata['file_hash'];
+		$file = $metadata['file'];
+		$notedata_array = $songCacheFile['notedata'];
 
-	//echo "Starting inspection of file $file\n";
+		//echo "Starting inspection of file $file\n";
 
-	//Get song directory (this is needed to associate the songlist with score records)	
+		//Get song directory (this is needed to associate the songlist with score records)	
 
-		if(isset($metadata['#SONGFILENAME'])){
-				//song has a an associated simfile
-				//echo "directory to simfile\n";
-				$song_dir = substr($metadata['#SONGFILENAME'],1,strrpos($metadata['#SONGFILENAME'],"/")-1); //remove beginning slash and file extension
-				//echo "'$song_dir'\n";
-			}else{
-				echo $file . PHP_EOL . "There's something truly wrong with this song, like how?" . PHP_EOL;
-			}
+			if(isset($metadata['#SONGFILENAME'])){
+					//song has a an associated simfile
+					//echo "directory to simfile\n";
+					$song_dir = substr($metadata['#SONGFILENAME'],1,strrpos($metadata['#SONGFILENAME'],"/")-1); //remove beginning slash and file extension
+					//echo "'$song_dir'\n";
+				}else{
+					echo $file . PHP_EOL . "There's something truly wrong with this song, like how?" . PHP_EOL;
+				}
 
-	//Get pack
+		//Get pack
 
-		$pack = substr($song_dir, 0, strripos($song_dir, "/"));
-		$pack = substr($pack, strripos($pack, "/")+1);
-		$pack = mysqli_real_escape_string($conn,$pack);
-		
-	//Get title
-		if( !isset($metadata['#TITLETRANSLIT']) || empty($metadata['#TITLETRANSLIT'])){
-			//song does not have a transliterated title
-			If (isset($metadata['#TITLE']) && !empty($metadata['#TITLE'])){
-				//song has a regular title
-				$title = $metadata['#TITLE'];
-			}else{
-				//song doesn't have a title, can you believe that shit? Use the end of the filename.
-				$title = substr($song_dir, strripos($song_dir, "/")+1);
-			}
-		}elseif( isset($metadata['#TITLETRANSLIT']) && !empty($metadata['#TITLETRANSLIT'])){
-			//song has a transliterated title
-				$title = $metadata['#TITLETRANSLIT'];
-			}else{
-				echo "!!!!! File must be busted. No title or titletranslit. !!!!!" . PHP_EOL;
-			}
-		
-		if(strpos($title, "[") == 0 && strpos($title, "]") && !preg_match("/]$/",$title)){
-			//This song title has a [BRACKETED TAG] before the actual title, let's remove it
-			$firstbracketpos = strpos($title, "[");
-			$lastbracketpos = strpos($title, "]");
-			$title = substr($title, $lastbracketpos+1);
+			$pack = substr($song_dir, 0, strripos($song_dir, "/"));
+			$pack = substr($pack, strripos($pack, "/")+1);
+			$pack = mysqli_real_escape_string($conn,$pack);
 			
-			if(strpos($title, "- ") == 1){
-				//This song title now has a " - " before the actual title, let's remove that too
-				$title = substr($title, 3);
+		//Get title
+			if( !isset($metadata['#TITLETRANSLIT']) || empty($metadata['#TITLETRANSLIT'])){
+				//song does not have a transliterated title
+				if (isset($metadata['#TITLE']) && !empty($metadata['#TITLE'])){
+					//song has a regular title
+					$title = $metadata['#TITLE'];
+				}else{
+					//song doesn't have a title, can you believe that shit? Use the end of the filename.
+					$title = substr($song_dir, strripos($song_dir, "/")+1);
+				}
+			}elseif( isset($metadata['#TITLETRANSLIT']) && !empty($metadata['#TITLETRANSLIT'])){
+				//song has a transliterated title
+					$title = $metadata['#TITLETRANSLIT'];
+				}else{
+					echo "!!!!! File must be busted. No title or titletranslit. !!!!!" . PHP_EOL;
+				}
+			
+			$title = trim($title);
+			$title = mysqli_real_escape_string($conn,$title);
+
+			if(preg_match('/^\[\S+\] +/',$title)){
+				//This song title has a [BRACKETED TAG] before the actual title, let's remove it
+				//"[07] Disco Pop" or "[Stamina] EuroBeatSong"
+				$strippedtitle = preg_replace('/^\[\S+\] +/',"",$title,1);
+				$strippedtitle = trim($strippedtitle);
+				//replace leftover "-" from beginning of title
+				$strippedtitle = preg_replace('/^-/',"",$strippedtitle);
+				$strippedtitle = clean($strippedtitle);
+			}else{
+				$strippedtitle = clean($title);
 			}
+
+		//Get subtitle
+			
+			if( !isset($metadata['#SUBTITLETRANSLIT']) || empty($metadata['#SUBTITLETRANSLIT'])){
+				//song does not have a transliterated subtitle
+				if (isset($metadata['#SUBTITLE']) && !empty($metadata['#SUBTITLE'])){
+					//song has a regular subtitle
+					$subtitle = $metadata['#SUBTITLE'];
+				}
+			}elseif( isset($metadata['#SUBTITLETRANSLIT']) && !empty($metadata['#SUBTITLETRANSLIT'])){
+				//song has a transliterated subtitle
+					$subtitle = $metadata['#SUBTITLETRANSLIT'];
+				}
+			
+			$subtitle = trim($subtitle);
+			$subtitle = mysqli_real_escape_string($conn,$subtitle);
+			$strippedsubtitle = clean($subtitle);
+
+		//Get artist
+			
+			if( !isset($metadata['#ARTISTTRANSLIT']) || empty($metadata['#ARTISTTRANSLIT'])){
+				//song does not have a transliterated artist
+				if (isset($metadata['#ARTIST']) && !empty($metadata['#ARTIST'])){
+					//song has a regular artist
+					$artist = $metadata['#ARTIST'];
+				}
+			}elseif( isset($metadata['#ARTISTTRANSLIT']) && !empty($metadata['#ARTISTTRANSLIT'])){
+				//song has a transliterated artist
+					$artist = $metadata['#ARTISTTRANSLIT'];
+				}
+			
+			
+			$artist = trim($artist);
+			$artist = mysqli_real_escape_string($conn,$artist);
+			$strippedartist = clean($artist);
+
+		// Get BPM
+
+			if( isset($metadata['#DISPLAYBPM']) && !empty($metadata['#DISPLAYBPM'])){
+				//song has a bpm listed
+				$display_bpm = $metadata['#DISPLAYBPM'];
+				if( strpos($display_bpm,':') > 0){
+					//bpm is a range
+					$display_bpm = explode(":",$display_bpm);
+					if(round(min($display_bpm),0) == 0){
+						//display bpm range has a '0', this is usually ignored by StepMania
+						//treat as if it was not a range
+						$display_bpm = round(max($display_bpm),0);
+					}elseif(round(min($display_bpm),0) == round(max($display_bpm),0)){
+						//the bpm has lied and is not a range
+						$display_bpm = round(max($display_bpm),0);
+					}else{
+						//round and format bpm range
+						$display_bpm = round(min($display_bpm),0) . "-" . round(max($display_bpm),0);
+					}
+				}else{
+					//bpm is not a range
+					$display_bpm = trim($display_bpm);
+					$display_bpm = round($display_bpm,0);
+				}
+			}
+			if( empty($display_bpm) || $display_bpm <= 0){
+				//#DISPLAYBPM tag is empty or has a weird value, pull from #BPMS tag
+				if( isset($metadata['#BPMS']) && !empty($metadata['#BPMS'])){
+					//split all the bpms, find the min and max
+					$display_bpm = trim($metadata['#BPMS']);
+					$display_bpm = explode(",",$display_bpm);
+					$display_bpm = array_map(function($n){return substr($n,strpos($n,"=")+1);},$display_bpm);
+					if(count($display_bpm) > 1){
+						if(round(min($display_bpm),0) == round(max($display_bpm),0)){
+							//the bpm has lied and is not a range
+							$display_bpm = round(max($display_bpm),0);
+						}else{
+							$display_bpm = round(min($display_bpm),0) . "-" . round(max($display_bpm),0);
+						}
+					}elseif(count($display_bpm) == 1){
+						$display_bpm = round($display_bpm[0],0);
+					}else{
+						//bpm error
+					}
+				}
+			}
+
+		// Get music length in seconds
+
+			if( isset($metadata['#MUSICLENGTH']) && !empty($metadata['#MUSICLENGTH'])){
+				//song has a music length listed
+				$music_length = $metadata['#MUSICLENGTH'];
+			}
+
+			$music_length = trim($music_length);
+			$music_length = round($music_length,0);
+
+		//Get existence of background video
+			
+			if( isset($metadata['#BGCHANGES']) && !empty($metadata['#BGCHANGES'])){
+				//song has a background video
+				$bga = 1;
+			}
+
+		//Get song credit
+			
+		if( isset($metadata['#CREDIT']) && !empty($metadata['#CREDIT'])){
+			//song has a credit
+			$song_credit = $metadata['#CREDIT'];
+			$song_credit = mysqli_real_escape_string($conn,$song_credit);
 		}
-		
-		$title = trim($title);
-		$title = mysqli_real_escape_string($conn,$title);
-		$strippedtitle = clean($title);
-
-	//Get subtitle
-		
-		if( !isset($metadata['#SUBTITLETRANSLIT']) || empty($metadata['#SUBTITLETRANSLIT'])){
-			//song does not have a transliterated subtitle
-			If (isset($metadata['#SUBTITLE']) && !empty($metadata['#SUBTITLE'])){
-				//song has a regular subtitle
-				$subtitle = $metadata['#SUBTITLE'];
-			}
-		}elseif( isset($metadata['#SUBTITLETRANSLIT']) && !empty($metadata['#SUBTITLETRANSLIT'])){
-			//song has a transliterated subtitle
-				$subtitle = $metadata['#SUBTITLETRANSLIT'];
-			}
-		
-		$subtitle = trim($subtitle);
-		$subtitle = mysqli_real_escape_string($conn,$subtitle);
-		$strippedsubtitle = clean($subtitle);
-
-	//Get artist
-		
-		if( !isset($metadata['#ARTISTTRANSLIT']) || empty($metadata['#ARTISTTRANSLIT'])){
-			//song does not have a transliterated artist
-			If (isset($metadata['#ARTIST']) && !empty($metadata['#ARTIST'])){
-				//song has a regular artist
-				$artist = $metadata['#ARTIST'];
-			}
-		}elseif( isset($metadata['#ARTISTTRANSLIT']) && !empty($metadata['#ARTISTTRANSLIT'])){
-			//song has a transliterated artist
-				$artist = $metadata['#ARTISTTRANSLIT'];
-			}
-		
-		
-		$artist = trim($artist);
-		$artist = mysqli_real_escape_string($conn,$artist);
-		$strippedartist = clean($artist);
-
-	// Get BPM
-
-		if( isset($metadata['#DISPLAYBPM']) && !empty($metadata['#DISPLAYBPM'])){
-			//song has a bpm listed
-			$display_bpm = $metadata['#DISPLAYBPM'];
-		}elseif( isset($metadata['#BPMS']) && !empty($metadata['#BPMS'])){
-			$displaybpmstart = strpos($metadata['#BPMS'],"=")+1;
-			$display_bpm = substr($metadata['#BPMS'],$displaybpmstart);
-			}
-
-		if( strpos($display_bpm,':') > 0){
-			//bpm is a range
-			$display_bpmSplit = array();
-			$display_bpmSplit = preg_split("/:/",$display_bpm);
-			//get the average bpm
-			$display_bpm =  ceil((intval($display_bpmSplit[0],0) + intval($display_bpmSplit[1],0)) / 2);
-		}else{
-			$display_bpm = trim($display_bpm);
-			$display_bpm = intval($display_bpm,0);
-		}
-
-	// Get music length in seconds
-
-		if( isset($metadata['#MUSICLENGTH']) && !empty($metadata['#MUSICLENGTH'])){
-			//song has a music length listed
-			$music_length = $metadata['#MUSICLENGTH'];
-		}
-
-		$music_length = trim($music_length);
-		$music_length = intval($music_length,0);
-
-	//Get existence of background video
-		
-		if( isset($metadata['#BGCHANGES']) && !empty($metadata['#BGCHANGES'])){
-			//song has a background video
-			$bga = 1;
-		}
-
-	//Get song credit
-		
-	if( isset($metadata['#CREDIT']) && !empty($metadata['#CREDIT'])){
-		//song has a credit
-		$song_credit = $metadata['#CREDIT'];
-		$song_credit = mysqli_real_escape_string($conn,$song_credit);
-	}
-		
+			
 		//check if this song exists in the db
-		$sql = "SELECT * FROM sm_songs WHERE song_dir=\"$song_dir/\"";
+		$sql = "SELECT id,checksum FROM sm_songs WHERE song_dir=\"$song_dir/\"";
 		$retval = mysqli_query( $conn, $sql );
-		
-		$sql_notedata_values = "";
 		
 		if(mysqli_num_rows($retval) == 0){
 		//This song doesn't yet exist in the db, let's add it!
-			$installed = 1;
 			$scraper = 2;
 			echo "Adding to DB: ".stripslashes($title)." from ".stripslashes($pack) . PHP_EOL;
 
-		$sql_songs_query = "INSERT INTO sm_songs (title, subtitle, artist, pack, strippedtitle, strippedsubtitle, strippedartist, song_dir, credit, display_bpm, music_length, bga, installed, added, checksum, scraper) VALUES (\"$title\", \"$subtitle\", \"$artist\", \"$pack\", \"$strippedtitle\", \"$strippedsubtitle\", \"$strippedartist\", \"$song_dir/\", \"$song_credit\", '$display_bpm', '$music_length', '$bga', '$installed', NOW(), \"$file_hash\", '$scraper')";
+			$sql_songs_query = "INSERT INTO sm_songs (title, subtitle, artist, pack, strippedtitle, strippedsubtitle, strippedartist, song_dir, credit, display_bpm, music_length, bga, installed, added, checksum, scraper) VALUES (\"$title\", \"$subtitle\", \"$artist\", \"$pack\", \"$strippedtitle\", \"$strippedsubtitle\", \"$strippedartist\", \"$song_dir/\", \"$song_credit\", '$display_bpm', '$music_length', '$bga', '$installed', NOW(), \"$file_hash\", '$scraper')";
 			
 			if (!mysqli_query($conn, $sql_songs_query)) {
 				echo "Error: " . $sql_songs_query . PHP_EOL . mysqli_error($conn) . PHP_EOL;
 			}
-		// Adding note data to sm_notedata DB:		
+			// Adding note data to sm_notedata DB:		
 			$song_id = mysqli_insert_id($conn);
 			
 			//build notedata array into query ready values
@@ -327,64 +414,61 @@ function scrapeSong($songCache_array){
 				echo "Error: " . $sql_notedata_query . PHP_EOL . mysqli_error($conn) . PHP_EOL;
 			}
 		}else{
-				//This song already exists in the db, checking if there are any updates
-				$retval = mysqli_fetch_assoc($retval);
-				$song_id = $retval['id'];
-				$stored_hash = $retval['checksum'];
+			//This song already exists in the db, checking if there are any updates
+			$retval = mysqli_fetch_assoc($retval);
+			$song_id = $retval['id'];
+			$stored_hash = $retval['checksum'];
 				
-				if( $file_hash != $stored_hash){
-				// md5s do not match, assume there were updates to this song
-					//echo "File Hash: ".$file_hash." != Stored Hash: ".$stored_hash.PHP_EOL;
-					$installed = 1;
-					$scraper = 3;
-					$sql_songs_query = "UPDATE sm_songs SET 
-					title=\"$title\", subtitle=\"$subtitle\", artist=\"$artist\", pack=\"$pack\", strippedtitle=\"$strippedtitle\", strippedsubtitle=\"$strippedsubtitle\", strippedartist=\"$strippedartist\", credit=\"$song_credit\", display_bpm='$display_bpm', music_length='$music_length', bga='$bga', installed={$installed}, checksum=\"$file_hash\", scraper='$scraper'   
-					WHERE id='$song_id'";
-			
-				echo "Changes detected in {$song_id}: ".stripslashes($title)." from ".stripslashes($pack)." Updating..." . PHP_EOL;
-			
-					if (!mysqli_query($conn, $sql_songs_query)) {
-						echo "Error: " . $sql_songs_query . PHP_EOL . mysqli_error($conn) . PHP_EOL;
-					}
-				
-					//whether song db updates or not, delete and insert notedata for song_id
-					foreach ($notedata_array as $key){
-						$key = array_map(function($str){global $conn; return mysqli_real_escape_string($conn,$str);},$key);
-						$sql_notedata_values = $sql_notedata_values.",(\"$song_id\",\"$song_dir/\",\"".implode("\",\"",$key)."\",NOW())";
-					}
-					
-					$sql_notedata_query = "DELETE FROM sm_notedata WHERE song_id={$song_id}";
-					
-					if (!mysqli_query($conn, $sql_notedata_query)) {
-						echo "Error: " . $sql_notedata_query . PHP_EOL . mysqli_error($conn) . PHP_EOL;
-					}
-					
-					$sql_notedata_query = "INSERT INTO sm_notedata (song_id, song_dir, chart_name, stepstype, description, chartstyle, charthash, difficulty, meter, radar_values, credit, display_bpm, stepfile_name, datetime) VALUES ".substr($sql_notedata_values,1); 
-					
-					if (!mysqli_query($conn, $sql_notedata_query)) {
-						echo "Error: " . $sql_notedata_query . PHP_EOL . mysqli_error($conn) . PHP_EOL;
-					}
+			if( $file_hash != $stored_hash){
+			// md5s do not match, assume there were updates to this song
 
-				}else{
-						
-					//we will mark the existing record as "installed"
-					$installed = 1;
-					$scraper = 1;
-					$sql_songs_query = "UPDATE sm_songs SET installed='$installed', scraper='$scraper' WHERE id='$song_id'";
-						if (!mysqli_query($conn, $sql_songs_query)) {
-							echo "Error: " . $sql_songs_query . PHP_EOL . mysqli_error($conn) . PHP_EOL;
-						}
+				$scraper = 3;
+				$sql_songs_query = "UPDATE sm_songs SET title=\"$title\", subtitle=\"$subtitle\", artist=\"$artist\", pack=\"$pack\", strippedtitle=\"$strippedtitle\", strippedsubtitle=\"$strippedsubtitle\", strippedartist=\"$strippedartist\", credit=\"$song_credit\", display_bpm='$display_bpm', music_length='$music_length', bga='$bga', installed='$installed', checksum=\"$file_hash\", scraper='$scraper' WHERE id='$song_id'";
+			
+				echo "Changes detected in $song_id: ".stripslashes($title)." from ".stripslashes($pack)." Updating..." . PHP_EOL;
+			
+				if (!mysqli_query($conn, $sql_songs_query)) {
+					echo "Error: " . $sql_songs_query . PHP_EOL . mysqli_error($conn) . PHP_EOL;
 				}
-			}
+				
+				//whether song db updates or not, delete and insert notedata for song_id
+				foreach ($notedata_array as $key){
+					$key = array_map(function($str){global $conn; return mysqli_real_escape_string($conn,$str);},$key);
+					$sql_notedata_values = $sql_notedata_values.",(\"$song_id\",\"$song_dir/\",\"".implode("\",\"",$key)."\",NOW())";
+				}
+					
+				$sql_notedata_query = "DELETE FROM sm_notedata WHERE song_id=$song_id";
+					
+				if (!mysqli_query($conn, $sql_notedata_query)) {
+					echo "Error: " . $sql_notedata_query . PHP_EOL . mysqli_error($conn) . PHP_EOL;
+				}
+					
+				$sql_notedata_query = "INSERT INTO sm_notedata (song_id, song_dir, chart_name, stepstype, description, chartstyle, charthash, difficulty, meter, radar_values, credit, display_bpm, stepfile_name, datetime) VALUES ".substr($sql_notedata_values,1); 
+					
+				if (!mysqli_query($conn, $sql_notedata_query)) {
+						echo "Error: " . $sql_notedata_query . PHP_EOL . mysqli_error($conn) . PHP_EOL;
+				}
+
+			}else{			
+			//we will mark the existing record as "installed"
+				$scraper = 1;
+				$sql_songs_query = "UPDATE sm_songs SET installed='$installed', scraper='$scraper' WHERE id='$song_id'";
+				if (!mysqli_query($conn, $sql_songs_query)) {
+					echo "Error: " . $sql_songs_query . PHP_EOL . mysqli_error($conn) . PHP_EOL;
+				}
+			}	
+		}
+	}
 }
 
-function addLastPlayedtoDB ($lastplayed_array){
+function addLastPlayedtoDB (array $lastplayed_array){
 	//This function inserts or updates song records in the sm_songsplayed table 
 	global $conn;
 	$lastplayedIDUpdated = array();
 
 	foreach ($lastplayed_array as $lastplayed){
 		//loop through the array and parse the lastplayed information
+		$songInfo = array();
 		//check if this entry exists already
 		$sql0 = "SELECT * FROM sm_songsplayed WHERE song_dir = \"{$lastplayed['SongDir']}\" AND numplayed = \"{$lastplayed['NumTimesPlayed']}\" AND lastplayed >= \"{$lastplayed['LastPlayed']}\" AND difficulty = \"{$lastplayed['Difficulty']}\" AND stepstype = \"{$lastplayed['StepsType']}\" AND username = \"{$lastplayed['DisplayName']}\"";
 		if (!$retval = mysqli_query($conn, $sql0)){
@@ -392,9 +476,6 @@ function addLastPlayedtoDB ($lastplayed_array){
 		}
 		if (mysqli_num_rows($retval) == 0){
 			//existing record is not found - let's either update or insert a record
-			$id = "";
-			$chartHashSQL ="";
-			$player_guidSQL ="";
 			$songInfo = lookupSongID($lastplayed['SongDir']);
 			//check if the number of times played has increased and update db
 			$sql0 = "SELECT * FROM sm_songsplayed WHERE song_dir = \"{$lastplayed['SongDir']}\" AND difficulty = \"{$lastplayed['Difficulty']}\" AND stepstype = \"{$lastplayed['StepsType']}\" AND username = \"{$lastplayed['DisplayName']}\" ORDER BY lastplayed DESC";
@@ -409,20 +490,12 @@ function addLastPlayedtoDB ($lastplayed_array){
 				$row = mysqli_fetch_assoc($retval);
 
 				$song_id = $row['song_id'];
-				if($song_id === 0 && $songInfo['id'] !== 0){
-					//$songInfo = lookupSongID($row['song_dir']);
+				if($song_id == 0 && $songInfo['id'] != 0){
 					$song_id = $songInfo['id'];
 				}
-				if(empty($row['charthash']) && !empty($lastplayed['ChartHash'])){
-					//charthash is null and there is a new charthash, let's update it.
-					$chartHashSQL = "charthash = \"" . $lastplayed['ChartHash'] . "\",";
-				}
-				if(empty($row['player_guid']) && !empty($lastplayed['PlayerGuid'])){
-					//charthash is null and there is a new charthash, let's update it.
-					$player_guidSQL = "player_guid = \"" . $lastplayed['PlayerGuid'] . "\",";
-				}
+
 				$id = $row['id'];
-				$sql0 = "UPDATE sm_songsplayed SET song_id = \"{$song_id}\", numplayed = \"{$lastplayed['NumTimesPlayed']}\", lastplayed = \"{$lastplayed['LastPlayed']}\", $chartHashSQL $player_guidSQL datetime = NOW() WHERE id = \"{$id}\"";
+				$sql0 = "UPDATE sm_songsplayed SET song_id = '$song_id', numplayed = '{$lastplayed['NumTimesPlayed']}', lastplayed = '{$lastplayed['LastPlayed']}', charthash = '{$lastplayed['ChartHash']}', player_guid = '{$lastplayed['PlayerGuid']}', profile_id = '{$lastplayed['ProfileID']}', profile_type = '{$lastplayed['ProfileType']}', datetime = NOW() WHERE id = '$id'";
 				if (!mysqli_query($conn, $sql0)){
 					echo "Error: " . $sql0 . PHP_EOL . mysqli_error($conn) . PHP_EOL;
 				}
@@ -454,7 +527,7 @@ function addLastPlayedtoDB ($lastplayed_array){
 					//$songInfo = lookupSongID($row['song_dir']);
 					$song_id = $songInfo['id'];
 				}
-				$sql0 = "UPDATE sm_songsplayed SET song_id = \"{$song_id}\", numplayed = \"{$lastplayed['NumTimesPlayed']}\", lastplayed = \"{$lastplayed['LastPlayed']}\", datetime = NOW() WHERE id = \"{$id}\"";
+				$sql0 = "UPDATE sm_songsplayed SET song_id = '$song_id', numplayed = \"{$lastplayed['NumTimesPlayed']}\", lastplayed = \"{$lastplayed['LastPlayed']}\", charthash = '{$lastplayed['ChartHash']}', player_guid = '{$lastplayed['PlayerGuid']}', profile_id = '{$lastplayed['ProfileID']}', profile_type = '{$lastplayed['ProfileType']}', datetime = NOW() WHERE id = '$id'";
 				if (!mysqli_query($conn, $sql0)){
 					echo "Error: " . $sql0 . PHP_EOL . mysqli_error($conn) . PHP_EOL;
 				}
@@ -463,7 +536,7 @@ function addLastPlayedtoDB ($lastplayed_array){
 				//record does not exist - insert a new row
 				//echo "Debug: Insert new record. Query: $sql0" . PHP_EOL;
 				$song_id = $songInfo['id'];
-				$sql0 = "INSERT INTO sm_songsplayed (song_id,song_dir,stepstype,difficulty,charthash,username,player_guid,numplayed,lastplayed,datetime) VALUES (\"{$song_id}\",\"{$lastplayed['SongDir']}\",\"{$lastplayed['StepsType']}\",\"{$lastplayed['Difficulty']}\",\"{$lastplayed['ChartHash']}\",\"{$lastplayed['DisplayName']}\",\"{$lastplayed['PlayerGuid']}\",\"{$lastplayed['NumTimesPlayed']}\",\"{$lastplayed['LastPlayed']}\",NOW())";
+				$sql0 = "INSERT INTO sm_songsplayed (song_id,song_dir,stepstype,difficulty,charthash,username,player_guid,profile_id,profile_type,numplayed,lastplayed,datetime) VALUES (\"$song_id\",\"{$lastplayed['SongDir']}\",\"{$lastplayed['StepsType']}\",\"{$lastplayed['Difficulty']}\",\"{$lastplayed['ChartHash']}\",\"{$lastplayed['DisplayName']}\",\"{$lastplayed['PlayerGuid']}\",\"{$lastplayed['ProfileID']}\",\"{$lastplayed['ProifileType']}\",\"{$lastplayed['NumTimesPlayed']}\",\"{$lastplayed['LastPlayed']}\",NOW())";
 				if (!mysqli_query($conn, $sql0)){
 					echo "Error: " . $sql0 . PHP_EOL . mysqli_error($conn) . PHP_EOL;
 				}
@@ -477,38 +550,25 @@ function addLastPlayedtoDB ($lastplayed_array){
 			//Let's update the song ID, just in case it was added before a song cache scrape
 			while($row = mysqli_fetch_assoc($retval)){
 				$song_id = $row['song_id'];
-				if($song_id === 0){
+				if($song_id == 0){
+					//song id is 0
 					$songInfo = lookupSongID($row['song_dir']);
 					$song_id = $songInfo['id'];
-					$id = $row['id'];
-					$sql0 = "UPDATE sm_songsplayed SET song_id = \"{$song_id}\" WHERE id = \"{$id}\"";
-					if (!mysqli_query($conn, $sql0)){
-						echo "Error: " . $sql0 . PHP_EOL . mysqli_error($conn) . PHP_EOL;
-					}
 				}
-				//update the charthash if the db is null and one exists from the Stats.xml
-				if(empty($row['charthash']) && !empty($lastplayed['ChartHash'])){
-					$id = $row['id'];
-					$sql0 = "UPDATE sm_songsplayed SET charthash = \"{$lastplayed['ChartHash']}\" WHERE id = \"{$id}\"";
-					if (!mysqli_query($conn, $sql0)){
-						echo "Error: " . $sql0 . PHP_EOL . mysqli_error($conn) . PHP_EOL;
-					}
+
+				$id = $row['id'];
+				$sql0 = "UPDATE sm_songsplayed SET song_id = '$song_id', charthash = '{$lastplayed['ChartHash']}', player_guid = '{$lastplayed['PlayerGuid']}', profile_id = '{$lastplayed['ProfileID']}', profile_type = '{$lastplayed['ProfileType']}' WHERE id = '$id'";
+				if (!mysqli_query($conn, $sql0)){
+					echo "Error: " . $sql0 . PHP_EOL . mysqli_error($conn) . PHP_EOL;
 				}
-				//update the player_guid if the db is null and one exists from the Stats.xml
-				if(empty($row['player_guid']) && !empty($lastplayed['PlayerGuid'])){
-					$id = $row['id'];
-					$sql0 = "UPDATE sm_songsplayed SET player_guid = \"{$lastplayed['PlayerGuid']}\" WHERE id = \"{$id}\"";
-					if (!mysqli_query($conn, $sql0)){
-						echo "Error: " . $sql0 . PHP_EOL . mysqli_error($conn) . PHP_EOL;
-					}
-				}
+
 			}
 		}
 	}
-	return $lastplayedIDUpdated;
+	return (array) $lastplayedIDUpdated;
 }
 
-function markRequest ($idArray){
+function markRequest (array $idArray){
 	//This function updates the sm_requests table if requests were completed
 	global $conn;
 	
@@ -518,9 +578,9 @@ function markRequest ($idArray){
 		$sql3 = "UPDATE sm_requests
 		JOIN sm_songsplayed ON sm_songsplayed.song_id=sm_requests.song_id
 		SET state = 'completed'
-		WHERE sm_requests.state = 'requested' AND sm_songsplayed.id = {$id} AND sm_songsplayed.lastplayed > sm_requests.request_time AND sm_songsplayed.lastplayed > DATE(sm_songsplayed.lastplayed) 
+		WHERE sm_requests.state = 'requested' AND sm_songsplayed.id = '$id' AND sm_songsplayed.lastplayed > sm_requests.request_time AND sm_songsplayed.lastplayed > DATE(sm_songsplayed.lastplayed) 
 		ORDER BY lastplayed DESC, request_time ASC LIMIT 1";
-		if (!$retval = mysqli_query($conn, $sql3)){echo "Error: " . $sql3 . PHP_EOL . mysqli_error($conn) . PHP_EOL;}
+		if (!mysqli_query($conn, $sql3)){echo "Error: " . $sql3 . PHP_EOL . mysqli_error($conn) . PHP_EOL;}
 		if (mysqli_affected_rows($conn) > 0){
 			echo "Marking request as complete." . PHP_EOL;
 		}else{
@@ -528,14 +588,14 @@ function markRequest ($idArray){
 			$sql3 = "UPDATE sm_requests
 			JOIN sm_songsplayed ON sm_songsplayed.song_id=sm_requests.song_id
 			SET state = 'completed'
-			WHERE sm_requests.state = 'requested' AND sm_songsplayed.id = {$id} AND (DATE(sm_songsplayed.lastplayed) = DATE(sm_requests.request_time) OR sm_songsplayed.lastplayed = DATE(sm_songsplayed.lastplayed))  
+			WHERE sm_requests.state = 'requested' AND sm_songsplayed.id = '$id' AND (DATE(sm_songsplayed.lastplayed) = DATE(sm_requests.request_time) OR sm_songsplayed.lastplayed = DATE(sm_songsplayed.lastplayed))  
 			ORDER BY lastplayed DESC, request_time ASC LIMIT 1";
-			if (!$retval = mysqli_query($conn, $sql3)){echo "Error: " . $sql3 . PHP_EOL . mysqli_error($conn) . PHP_EOL;}
+			if (!mysqli_query($conn, $sql3)){echo "Error: " . $sql3 . PHP_EOL . mysqli_error($conn) . PHP_EOL;}
 			if (mysqli_affected_rows($conn) > 0){
 				echo "Marking request as complete (fallback)." . PHP_EOL;
 			}
 			//add the time to the lastplayed timestamp, if it's obvious what time it should be
-			$sql3 = "SELECT * FROM sm_songsplayed WHERE id = {$id}";
+			$sql3 = "SELECT * FROM sm_songsplayed WHERE id = '$id'";
 
 			$retval3 = mysqli_fetch_assoc(mysqli_query($conn, $sql3));
 			$dateTime = strtotime($retval3['datetime']);
@@ -543,19 +603,20 @@ function markRequest ($idArray){
 			$dateTimeDate = strtotime(date("Y-m-j",$dateTime));
 			if ($dateTimeDate == $lastplayedDate){	
 				$newDT = date("Y-m-j",$lastplayedDate) . " " . date("H:i:s",$dateTime);
-				$sql3 = "UPDATE sm_songsplayed SET lastplayed = \"{$newDT}\" WHERE id = {$id}";
-				if (!$retval = mysqli_query($conn, $sql3)){echo "Error: " . $sql3 . PHP_EOL . mysqli_error($conn) . PHP_EOL;}
-				echo "Updated lastplayed timestamp from ".date("Y-m-j",$lastplayedDate)." to {$newDT}." . PHP_EOL;
+				$sql3 = "UPDATE sm_songsplayed SET lastplayed = \"$newDT\" WHERE id = $id";
+				if (!mysqli_query($conn, $sql3)){echo "Error: " . $sql3 . PHP_EOL . mysqli_error($conn) . PHP_EOL;}
+				echo "Updated lastplayed timestamp from ".date("Y-m-j",$lastplayedDate)." to $newDT." . PHP_EOL;
 			}
 		}
 	}
 }
 
-function addHighScoretoDB ($highscore_array){
+function addHighScoretoDB (array $highscore_array){
 	//This function adds highscore entries into the sm_scores table
 	global $conn;
 
 	foreach ($highscore_array as $highscore){
+		$songInfo = array();
 		//look for existing record and skip if found
 		$sql1 = "SELECT * FROM sm_scores 
 		WHERE song_dir=\"{$highscore['SongDir']}\" AND stepstype=\"{$highscore['StepsType']}\" AND difficulty=\"{$highscore['Difficulty']}\" AND score=\"{$highscore['HighScore']['Score']}\" AND datetime=\"{$highscore['HighScore']['DateTime']}\" AND username =\"{$highscore['DisplayName']}\"";
@@ -584,17 +645,96 @@ function addHighScoretoDB ($highscore_array){
 			//catch a weird "-nan(ind)" error with radar values when jumps or freezes are zero
 			//error discovered in Project Outfox Alpha 4.9.10, fixed in 4.10.0
 			foreach($highscore['HighScore']['RadarValues'] as $radarValueName => $radarValue){
-				if(!is_numeric($radarValue)){
+				if(!is_numeric($radarValue) || $radarValue < 0){
 					$highscore['HighScore']['RadarValues'][$radarValueName] = 0;
 				}
 			}
 
 			//Let's build the VALUES string!
-			$sql1_values = "(\"{$highscore['SongDir']}\",\"{$song_id}\",\"{$song_title}\",\"{$song_pack}\",\"{$highscore['Difficulty']}\",\"{$highscore['StepsType']}\",\"{$highscore['ChartHash']}\",\"{$highscore['DisplayName']}\",\"{$highscore['HighScore']['Grade']}\",\"{$highscore['HighScore']['Score']}\",\"{$highscore['HighScore']['PercentDP']}\",\"{$highscore['HighScore']['Modifiers']}\",\"{$highscore['HighScore']['DateTime']}\",\"{$highscore['HighScore']['SurviveSeconds']}\",\"{$highscore['HighScore']['LifeRemainingSeconds']}\",\"{$highscore['HighScore']['Disqualified']}\",\"{$highscore['HighScore']['MaxCombo']}\",\"{$stageAward}\",\"{$peakComboAward}\",\"{$highscore['HighScore']['PlayerGuid']}\",\"{$highscore['HighScore']['MachineGuid']}\",\"{$highscore['HighScore']['TapNoteScores']['HitMine']}\",\"{$highscore['HighScore']['TapNoteScores']['AvoidMine']}\",\"{$highscore['HighScore']['TapNoteScores']['CheckpointMiss']}\",\"{$highscore['HighScore']['TapNoteScores']['Miss']}\",\"{$highscore['HighScore']['TapNoteScores']['W5']}\",\"{$highscore['HighScore']['TapNoteScores']['W4']}\",\"{$highscore['HighScore']['TapNoteScores']['W3']}\",\"{$highscore['HighScore']['TapNoteScores']['W2']}\",\"{$highscore['HighScore']['TapNoteScores']['W1']}\",\"{$highscore['HighScore']['TapNoteScores']['CheckpointHit']}\",\"{$highscore['HighScore']['HoldNoteScores']['LetGo']}\",\"{$highscore['HighScore']['HoldNoteScores']['Held']}\",\"{$highscore['HighScore']['HoldNoteScores']['MissedHold']}\",\"{$highscore['HighScore']['RadarValues']['Stream']}\",\"{$highscore['HighScore']['RadarValues']['Voltage']}\",\"{$highscore['HighScore']['RadarValues']['Air']}\",\"{$highscore['HighScore']['RadarValues']['Freeze']}\",\"{$highscore['HighScore']['RadarValues']['Chaos']}\",\"{$highscore['HighScore']['RadarValues']['Notes']}\",\"{$highscore['HighScore']['RadarValues']['TapsAndHolds']}\",\"{$highscore['HighScore']['RadarValues']['Jumps']}\",\"{$highscore['HighScore']['RadarValues']['Holds']}\",\"{$highscore['HighScore']['RadarValues']['Mines']}\",\"{$highscore['HighScore']['RadarValues']['Hands']}\",\"{$highscore['HighScore']['RadarValues']['Rolls']}\",\"{$highscore['HighScore']['RadarValues']['Lifts']}\",\"{$highscore['HighScore']['RadarValues']['Fakes']}\")"; 
+			$sql1_values = "(\"{$highscore['SongDir']}\",\"$song_id\",\"$song_title\",\"$song_pack\",\"{$highscore['Difficulty']}\",\"{$highscore['StepsType']}\",\"{$highscore['ChartHash']}\",\"{$highscore['DisplayName']}\",\"{$highscore['ProfileID']}\",\"{$highscore['ProfileType']}\",\"{$highscore['HighScore']['Grade']}\",\"{$highscore['HighScore']['Score']}\",\"{$highscore['HighScore']['PercentDP']}\",\"{$highscore['HighScore']['Modifiers']}\",\"{$highscore['HighScore']['DateTime']}\",\"{$highscore['HighScore']['SurviveSeconds']}\",\"{$highscore['HighScore']['LifeRemainingSeconds']}\",\"{$highscore['HighScore']['Disqualified']}\",\"{$highscore['HighScore']['MaxCombo']}\",\"{$stageAward}\",\"{$peakComboAward}\",\"{$highscore['HighScore']['PlayerGuid']}\",\"{$highscore['HighScore']['MachineGuid']}\",\"{$highscore['HighScore']['TapNoteScores']['HitMine']}\",\"{$highscore['HighScore']['TapNoteScores']['AvoidMine']}\",\"{$highscore['HighScore']['TapNoteScores']['CheckpointMiss']}\",\"{$highscore['HighScore']['TapNoteScores']['Miss']}\",\"{$highscore['HighScore']['TapNoteScores']['W5']}\",\"{$highscore['HighScore']['TapNoteScores']['W4']}\",\"{$highscore['HighScore']['TapNoteScores']['W3']}\",\"{$highscore['HighScore']['TapNoteScores']['W2']}\",\"{$highscore['HighScore']['TapNoteScores']['W1']}\",\"{$highscore['HighScore']['TapNoteScores']['CheckpointHit']}\",\"{$highscore['HighScore']['HoldNoteScores']['LetGo']}\",\"{$highscore['HighScore']['HoldNoteScores']['Held']}\",\"{$highscore['HighScore']['HoldNoteScores']['MissedHold']}\",\"{$highscore['HighScore']['RadarValues']['Stream']}\",\"{$highscore['HighScore']['RadarValues']['Voltage']}\",\"{$highscore['HighScore']['RadarValues']['Air']}\",\"{$highscore['HighScore']['RadarValues']['Freeze']}\",\"{$highscore['HighScore']['RadarValues']['Chaos']}\",\"{$highscore['HighScore']['RadarValues']['Notes']}\",\"{$highscore['HighScore']['RadarValues']['TapsAndHolds']}\",\"{$highscore['HighScore']['RadarValues']['Jumps']}\",\"{$highscore['HighScore']['RadarValues']['Holds']}\",\"{$highscore['HighScore']['RadarValues']['Mines']}\",\"{$highscore['HighScore']['RadarValues']['Hands']}\",\"{$highscore['HighScore']['RadarValues']['Rolls']}\",\"{$highscore['HighScore']['RadarValues']['Lifts']}\",\"{$highscore['HighScore']['RadarValues']['Fakes']}\")"; 
 				
-			echo "Adding a " . $highscore['HighScore']['Grade'] . " grade for the " . $highscore['Difficulty'] . " chart of " . $song_title . " from " . $song_pack . PHP_EOL;
+			echo "Adding a " . $highscore['HighScore']['Grade'] . " grade for the " . $highscore['Difficulty'] . "/" . $highscore['StepsType'] . " chart of " . $song_title . " from " . $song_pack . PHP_EOL;
 			
-			$sql2 = "INSERT INTO sm_scores (song_dir,song_id,title,pack,difficulty,stepstype,charthash,username,grade,score,percentdp,modifiers,datetime,survive_seconds,life_remaining_seconds,disqualified,max_combo,stage_award,peak_combo_award,player_guid,machine_guid,hit_mine,avoid_mine,checkpoint_miss,miss,w5,w4,w3,w2,w1,checkpoint_hit,let_go,held,missed_hold,stream,voltage,air,freeze,chaos,notes,taps_holds,jumps,holds,mines,hands,rolls,lifts,fakes) VALUES {$sql1_values}";
+			global $enableWebHook;
+			//echo "webhooks is " . $enableWebHook ."!";
+			
+			if($enableWebHook){
+				//Check to see what webhooks are needing processed
+				$sql_wh = "SELECT id, type, url, criteria, qualifier, jwt FROM sm_webhooks";
+				$res_wh = mysqli_query($conn, $sql_wh);
+				if (mysqli_num_rows($res_wh) == 0){
+					echo "No webhooks to process.";
+				} else {
+					while($hooks = mysqli_fetch_assoc($res_wh)) {
+						
+						$whscore = $highscore['HighScore']['PercentDP'] * 100;
+						//TODO: Customize this message better. Maybe make a configurable message to parse somewhere.
+						$botMessage = "Our Player has achieved a " . $whscore. " on " . $song_title . " from " . $song_pack; 
+						//echo "check for hooks type is " . $hooks['type'] . " right now.";
+						switch ($hooks['type']) {
+							case 1:
+								//echo "Case is 1. check for hooks criteria is " . $hooks['criteria'] . " right now.";
+								//Process the highschore by Grade
+								if ($highscore['HighScore']['Grade'] == $hooks['criteria']) {
+									
+									//echo "Case is 1. Criteria Matched. Check URL " . $hooks['url'] . " right now.";
+									//echo "string contains check is :" . str_contains($hooks['url'], 'streamelements') . " right now.";
+									if (str_contains($hooks['url'], 'streamelements')) {
+										processCallStreamElements($hooks['url'], $hooks['jwt'], $botMessage);
+									} else {
+										processWebhook($hooks['url'], $botMessage);
+									}
+								}
+								break;
+							case 2:
+								//echo "Case is 2. check for hooks criteria is " . $hooks['criteria'] . " right now.";
+								//Process the highscore by award
+								if ($highscore['HighScore']['StageAward'] == $hooks['criteria']) {
+									if (str_contains($hooks['url'], 'streamelements')) {
+										processCallStreamElements($hooks['url'], $hooks['jwt'], $botMessage);
+									} else {
+										processWebhook($hooks['url'], $botMessage);
+									}
+								}
+								break;
+							case 3:
+								//echo "Case is 3. check for hooks criteria is " . $hooks['criteria'] . " right now.";
+								//Process a highscore by Peak Combo Award
+								if ($highscore['HighScore']['PeakComboAward'] == $hooks['criteria']) {
+									if (str_contains($hooks['url'], 'streamelements')) {
+										processCallStreamElements($hooks['url'], $hooks['jwt'], $botMessage);
+									} else {
+										processWebhook($hooks['url'], $botMessage);
+									}
+								}
+								break;
+							case 4:
+								//echo "Case is 4. check for hooks criteria is " . $hooks['criteria'] . " right now.";
+								//Maybe send this to be processed in markComplete?
+								//Process a highscore specific to GitGud
+								echo "Code for Gitgud isn't ready yet";
+								
+								//Find out if this was a request
+								
+								//If the song was a request, was it a gitgud?
+								
+								//If it was a gitgud, what was the score to beat and did the user beat it
+									//Compare $gitgudScore > highscore['HighScore']['PercentDP']
+								
+								//if ($gitgudScore > highscore['HighScore']['PercentDP']) {
+								//	processWebhook($hooks['url']);
+								//}
+								break;
+							default:
+								//Process a default return of value not verified
+								echo "No hooks criteria matched";
+						}
+					}
+				}
+				
+			}
+			
+			$sql2 = "INSERT INTO sm_scores (song_dir,song_id,title,pack,difficulty,stepstype,charthash,username,profile_id,profile_type,grade,score,percentdp,modifiers,datetime,survive_seconds,life_remaining_seconds,disqualified,max_combo,stage_award,peak_combo_award,player_guid,machine_guid,hit_mine,avoid_mine,checkpoint_miss,miss,w5,w4,w3,w2,w1,checkpoint_hit,let_go,held,missed_hold,stream,voltage,air,freeze,chaos,notes,taps_holds,jumps,holds,mines,hands,rolls,lifts,fakes) VALUES $sql1_values";
 			if (!mysqli_query($conn, $sql2)){
 				echo "Error: " . $sql2 . PHP_EOL . mysqli_error($conn) . PHP_EOL;
 			}
@@ -604,21 +744,16 @@ function addHighScoretoDB ($highscore_array){
 			while($row = mysqli_fetch_assoc($retval)){
 				$song_id = $row['song_id'];
 				if($song_id == 0){
+					//song id is 0
 					$songInfo = lookupSongID($row['song_dir']);
 					$song_id = $songInfo['id'];
-					$id = $row['id'];
-					$sql0 = "UPDATE sm_scores SET song_id = \"{$song_id}\" WHERE id = \"{$id}\"";
-					if (!mysqli_query($conn, $sql0)){
-						echo "Error: " . $sql0 . PHP_EOL . mysqli_error($conn) . PHP_EOL;
-					}
 				}
-				//update the charthash if the db is null and one exists from the Stats.xml
-				if(empty($row['charthash']) && !empty($highscore['ChartHash'])){
-					$id = $row['id'];
-					$sql0 = "UPDATE sm_scores SET charthash = \"{$highscore['ChartHash']}\" WHERE id = \"{$id}\"";
-					if (!mysqli_query($conn, $sql0)){
-						echo "Error: " . $sql0 . PHP_EOL . mysqli_error($conn) . PHP_EOL;
-					}
+
+				$id = $row['id'];
+				$sql0 = "UPDATE sm_scores SET song_id = '$song_id', charthash = '{$highscore['ChartHash']}', player_guid = '{$highscore['PlayerGuid']}', profile_id = '{$highscore['ProfileID']}', profile_type = '{$highscore['ProfileType']}' WHERE id = '$id'";
+				//echo $sql0 . PHP_EOL;
+				if (!mysqli_query($conn, $sql0)){
+					echo "Error: " . $sql0 . PHP_EOL . mysqli_error($conn) . PHP_EOL;
 				}
 			}
 
@@ -646,9 +781,7 @@ switch ($jsonDecoded['source']){
 	case "songs":
 		//recieve json from song cache scraper
 		//echo "Processing song...\n";
-		foreach ($jsonDecoded['data'] as $cacheFile){
-			scrapeSong($cacheFile);
-		}
+		scrapeSong($jsonDecoded['data']);
 	break;
 	case "songsStart":
 		//prepare scraper helper field for song scraping
@@ -677,6 +810,7 @@ switch ($jsonDecoded['source']){
 		echo "No valid json string found." . PHP_EOL;
 }
 
+unset($jsonDecoded);
 mysqli_close($conn);
 die();
 

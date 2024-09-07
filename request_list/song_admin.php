@@ -1,10 +1,10 @@
 <?php
 
-require('config.php');
-include('misc_functions.php');
+require_once ('config.php');
+require_once ('misc_functions.php');
 
 if(!isset($_GET["security_key"]) || $_GET["security_key"] != $security_key || empty($_GET["security_key"])){
-    die("Fuck off");
+    die("Error: Missing or incorrect security key.");
 }
 
 if((!isset($_GET["bansong"]) || !isset($_GET["bansongid"])) && !isset($_GET["user"])){
@@ -42,7 +42,7 @@ function toggle_ban_song($id,$type){
 		}
 
 	        $sql = "UPDATE sm_songs SET banned=$value WHERE id=$id LIMIT 1";
-        	$retval = mysqli_query( $conn, $sql );
+        	mysqli_query( $conn, $sql );
 
 		echo "$response";
 
@@ -87,7 +87,7 @@ if(isset($_GET["bansongid"])){
 	$type = $commandArgs["ban"];
 
     //lookup by ID
-	$sql = "SELECT * FROM sm_songs WHERE id = '{$song}' ORDER BY title ASC";
+	$sql = "SELECT * FROM sm_songs WHERE id = '$song' ORDER BY title ASC";
 	$retval = mysqli_query( $conn, $sql );
 
 	if (mysqli_num_rows($retval) == 1) {
@@ -109,7 +109,7 @@ if(isset($_GET["bansong"])){
 	$type = $commandArgs["ban"];
 
 	//Determine if there's a song with this exact title. If someone requested "Tsugaru", this would match "TSUGARU" but would not match "TSUGARU (Apple Mix)"
-	$sql = "SELECT * FROM sm_songs WHERE strippedtitle='{$song}' ORDER BY title ASC";
+	$sql = "SELECT * FROM sm_songs WHERE strippedtitle='$song' ORDER BY title ASC";
 	$retval = mysqli_query( $conn, $sql );
 
 	if (mysqli_num_rows($retval) == 1) {
@@ -120,7 +120,7 @@ if(isset($_GET["bansong"])){
 	//end exact match
 	}
 
-	$sql = "SELECT * FROM sm_songs WHERE strippedtitle LIKE '%{$song}%' ORDER BY title ASC, pack ASC";
+	$sql = "SELECT * FROM sm_songs WHERE strippedtitle LIKE '%$song%' ORDER BY title ASC, pack ASC";
 	$retval = mysqli_query( $conn, $sql );
 
 	if (mysqli_num_rows($retval) == 1) {
@@ -132,7 +132,7 @@ if(isset($_GET["bansong"])){
 	}
 	//no one match
 	if (mysqli_num_rows($retval) > 0) {
-		echo "$user => No exact match (!bansongid [id]):";
+		echo "@$user => No exact match (!bansongid [id]):";
 		$i=1;
 		while($row = mysqli_fetch_assoc($retval)) {
 			if($i>4){die();}
@@ -144,6 +144,6 @@ if(isset($_GET["bansong"])){
 die();
 }
 
-mysqli_close();
+mysqli_close($conn);
 
 ?>
