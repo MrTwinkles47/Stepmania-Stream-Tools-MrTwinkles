@@ -183,7 +183,7 @@ function check_target_url(){
 		curl_exec($ch);
 		$retcode = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
 		$retries++;
-	} while ( ($retcode != 200) && $retries <= 10);
+	} while ( ($retcode != 200) && $retries <= 10); //retry every 3s, up to 10 times
 	curl_close($ch);
 	unset($ch);
 
@@ -192,13 +192,31 @@ function check_target_url(){
 	}
 }
 
+function mb_detect_enconding_in_order(string $string, array $encodings): string|false
+// PHP 8.1 changed the say mb_detect_encoding worked. This function behaves like <8.1 and should work fine for 7.4.
+// https://github.com/php/php-src/issues/8279
+{
+    foreach($encodings as $enc) {
+        if (mb_check_encoding($string, $enc)) {
+            return $enc;
+        }
+    }
+    return false;
+}
+
 function fixEncoding(string $line){
 	//detect and convert ascii, et. al directory string to UTF-8 (Thanks, StepMania!)
 	//96.69% of the time, the encoding error is in a Windows filename
 	//Project OutFox Alpha 4.12 fixed most of the character encoding issues, but this function will remain for legacy support
-	$encoding = mb_detect_encoding($line,'UTF-8,CP1252,ASCII,ISO-8859-1');
+
+	//$encoding = mb_detect_encoding($line,'UTF-8,CP1252,ASCII,ISO-8859-1');
+	$encoding = mb_detect_enconding_in_order($line,array('UTF-8','CP1252','ASCII','ISO-8859-1'));
 	$oldLine = $line;
+
+	if($encoding == 'UTF-8'){return (string) $line;} // GTFO if UTF-8
+
 	if($encoding != 'UTF-8'){
+		// encoding not UTF-8, convert from detected encoding to UTF-8
 		wh_log( "Invalid UTF-8 detected ($encoding). Converting...");
 		$line = mb_convert_encoding($line,'UTF-8',$encoding);
 		wh_log("Text converted from: \"" . $oldLine . "\" to: \"" . $line . "\".");
@@ -221,20 +239,28 @@ function fixEncoding(string $line){
 function parseJsonErrors(string $error, array $jsonArray){
 	if($error == JSON_ERROR_UTF8){
 		//json error because of bad utf-8
-		echo json_last_error_msg().PHP_EOL;
-		echo "One of these files has an error. Correct the special character in the song folder name and re-run the script.".PHP_EOL;
-		wh_log("One of these files has an error. Correct the special character in the song folder name and re-run the script.");
-		foreach($jsonArray['data'] as $cacheFile){
-			$songFilename = $cacheFile['metadata']['#SONGFILENAME'];
-			foreach($cacheFile['metadata'] as $metaDataLine){
-				if(!json_encode($metaDataLine)){
-					//specific error line found
-					echo("json encoding error for song $songFilename at the following line: $metaDataLine" . PHP_EOL);
-					wh_log("json encoding error for song $songFilename at the following line: $metaDataLine");
+		wh_log("Json UTF-8 error: " . json_last_error_msg());
+		echo("Json UTF-8 error: " . json_last_error_msg() . PHP_EOL);
+		
+		if(array_key_exists('metadata',$jsonArray['data'])){
+			// array contains song cache info
+			echo "One of these files has an error. Correct the special character in the song folder name and re-run the script.".PHP_EOL;
+			wh_log("One of these files has an error. Correct the special character in the song folder name and re-run the script.");
+			foreach($jsonArray['data'] as $cacheFile){
+				//the filename string is usually the offender
+				$songFilename = $cacheFile['metadata']['#SONGFILENAME'];
+				foreach($cacheFile['metadata'] as $metaDataLine){
+					if(!json_encode($metaDataLine)){
+						//specific error line found
+						echo("json encoding error for song $songFilename at the following line: $metaDataLine" . PHP_EOL);
+						wh_log("json encoding error for song $songFilename at the following line: $metaDataLine");
+					}
 				}
 			}
+		}elseif(array_key_exists('LastPlayed',$jsonArray['data']) || array_key_exists('HighScores',$jsonArray['data'])){
+			// rare error from stats file. is there something we can do?
 		}
-		die();
+	die();
 	}else{
 		wh_log("Json encode error: " . json_last_error_msg());
 		die("Json encode error: " . json_last_error_msg() . PHP_EOL . " Exiting." . PHP_EOL);

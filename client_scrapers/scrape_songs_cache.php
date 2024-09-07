@@ -234,7 +234,7 @@ function doesFileExist(string $songFilename){
 	$return = FALSE;
 
 	//songDir valid?
-	if(empty($songsDir) || !file_exists($songsDir)){
+	if(empty($songsDir) || !is_dir($songsDir)){
 		wh_log("StepMania song directory is empty or invalid. Check your config.php.".PHP_EOL);
 		die("StepMania song directory is empty or invalid. Check your config.php.");
 	}

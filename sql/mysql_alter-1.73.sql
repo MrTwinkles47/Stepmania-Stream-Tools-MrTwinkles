@@ -1,4 +1,4 @@
---SQL changes for upgrades from 1.71/1.72 to 1.73:
+-- SQL changes for upgrades from 1.71/1.72 to 1.73:
 
 -- From mysql_Alter-1.7x.sql
 ALTER TABLE `sm_scores` CHANGE `survive_seconds` `survive_seconds` DECIMAL(12,6) NULL DEFAULT NULL;
@@ -15,7 +15,7 @@ ALTER TABLE `sm_scores` CHANGE `mines` `mines` SMALLINT(6) UNSIGNED NULL DEFAULT
 ALTER TABLE `sm_scores` CHANGE `taps_holds` `taps_holds` SMALLINT(6) UNSIGNED NULL DEFAULT NULL;
 ALTER TABLE `sm_scores` CHANGE `max_combo` `max_combo` INT(10) NULL DEFAULT NULL;
 
---Add Webhooks table
+-- Add Webhooks table
 CREATE TABLE `sm_webhooks` (
   `id` int(11) NOT NULL,
   `type` int(11) NOT NULL,
@@ -26,11 +26,11 @@ CREATE TABLE `sm_webhooks` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 ALTER TABLE `sm_webhooks`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-COMMIT;
+  ADD PRIMARY KEY (`id`) USING BTREE;
 
 ALTER TABLE `sm_webhooks`
-  ADD PRIMARY KEY (`id`) USING BTREE;
+   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+COMMIT;
   
 
 -- force a rebuild of the song cache

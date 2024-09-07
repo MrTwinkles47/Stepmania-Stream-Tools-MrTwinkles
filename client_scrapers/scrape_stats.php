@@ -79,7 +79,7 @@ function process_USBProfileDir(string $USBProfileDir){
 		$USBProfileDir = explode(',',$USBProfileDir);
 		$USBProfileDir = array_map('trim',$USBProfileDir);
 		foreach($USBProfileDir as $dir){
-			if(!file_exists($dir)){
+			if(!is_dir($dir)){
 				//failed to find the usb drive/directory
 				wh_log("USB Profile directory: \"$dir\" does not exist! Check that the USB drive is inserted and the drive letter is correct.");
 				die("USB Profile directory: \"$dir\" does not exist! Check that the USB drive is inserted and the drive letter is correct." . PHP_EOL);
@@ -117,14 +117,16 @@ function parseXmlErrors($errors, string $xml_file){
 	//write back changes to a new file
 	//$xmlStr = implode(PHP_EOL,$xmlArray);
 	$xmlFileFixed = str_replace($statsXMLfilename,$statsXMLfilename . ".fixed",$xml_file);
-	if(file_exists($xmlFileFixed)){
+	if(file_exists($xmlFileFixed) && !is_dir($xmlFileFixed)){
 		//delete existing file
 		if(!unlink($xmlFileFixed)){
 			wh_log("Failed to delete existing \"fixed\" Stats XML file. Maybe a permissions error?");
 		}
 	}
-	if(file_put_contents($xmlFileFixed,implode('',$xmlArray)) === FALSE){
-		//failed to write file
+	$filesizeXmlOrg = filesize($xml_file);
+	$writtenBytes = file_put_contents($xmlFileFixed,implode('',$xmlArray));
+	if($writtenBytes === FALSE || ($writtenBytes > $filesizeXmlOrg * 1.1 || $writtenBytes < $filesizeXmlOrg * 0.9)){
+		//failed to write file or written file is > +- 10% the size of the org
 		wh_log("Failed to write temporary Stats XML file after correcting for UTF-8 errors.");
 		die("Failed to write temporary Stats XML file after correcting for UTF-8 errors.".PHP_EOL);
 	}
@@ -253,7 +255,6 @@ function statsXMLtoArray (array $file){
 		foreach ($song->Steps as $steps){		
 			$stepsType = (string)$steps['StepsType']; //dance-single, dance-double, etc.
 			$difficulty = (string)$steps['Difficulty']; //Beginner, Medium, Expert, etc.
-			//$chartHash = (string)$steps['Hash']; //OutFox chart hash
 			$chartHash = "";
 			foreach ($stepsHash as $hash){
 				if(!empty($steps[$hash])){
@@ -261,7 +262,6 @@ function statsXMLtoArray (array $file){
 					break;
 				}
 			}
-			//$stepsDescription = (string)$steps['Description']; //OutFox steps description
 			$stepsDescription = "";
 			foreach ($stepsDesc as $desc){
 				if(!empty($steps[$desc])){
@@ -361,7 +361,7 @@ $USBProfileDir = process_USBProfileDir($USBProfileDir);
 
 //find stats.xml files
 //saveDir valid?
-if(empty($saveDir) || !file_exists($saveDir)){
+if(empty($saveDir) || !is_dir($saveDir)){
 	wh_log("StepMania /Save directory is empty or invalid. Check your config.php.");
 	die("StepMania /Save directory is empty or invalid. Check your config.php." . PHP_EOL);
 }
