@@ -19,7 +19,7 @@ $uploaddir = __DIR__.'/images/packs';
 
 //List of games or channel categories that must be set as the "current game" on Twitch for the bot to work.
 //This is used as a backup if your bot does not support per game custom commands.
-$categoryGame = array('StepMania','Project OutFox','Etterna');
+$categoryGame = array('StepMania','Project OutFox','Etterna','ITGmania');
 
 //Broadcaster List. Define an array to associate broadcaster names with StepMania profile names.
 //This is only required if your StepMania setup is used by more than 1 twitch account

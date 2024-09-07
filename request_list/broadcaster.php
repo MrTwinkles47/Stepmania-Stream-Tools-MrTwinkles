@@ -7,7 +7,7 @@ if(!isset($_GET["security_key"]) || $_GET["security_key"] != $security_key || em
 }
 
 if(!isset($_GET["broadcaster"]) && (!isset($_GET["stepstyle"]) || !isset($_GET["meter"]) || !isset($_GET["requesttoggle"]))){
-	die();
+	die("Required parameter(s) missing!");
 }
 
 $conn = mysqli_connect(dbhost, dbuser, dbpass, db);
