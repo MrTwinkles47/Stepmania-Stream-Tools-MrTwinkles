@@ -1,0 +1,274 @@
+@import url('https://fonts.googleapis.com/css?family=Ubuntu');
+
+@font-face {
+  font-family: 'Fundamental';
+  src: url('fonts/fundamentalbrigade.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+body {
+	font-family: 'Fundamental', normal;
+	background-color: #000;
+	overflow:auto;
+}
+
+#middle{
+display:flex;
+flex-flow: column wrap;
+flex-direction: column;
+height: 513px;
+}
+
+::-webkit-scrollbar{
+  display:none;
+}
+
+h2 {
+  letter-spacing:0.01em;
+  font-size:10vh;
+  margin:0px;
+  margin-left:2vh;
+  margin-top:1vh;
+   text-shadow:
+       0.5vh 0.5vh 0.5vh #000,
+       3px 3px 0 #000,
+     -1px -1px 0 #000,  
+      1px -1px 0 #000,
+      -1px 1px 0 #000,
+       1px 1px 0 #000;
+   color: white;
+  position:relative;
+  line-height: 1.2;
+  z-index:5;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+h2a {
+  letter-spacing:0.01em;
+  font-size:6vh;
+  margin:0px;
+  margin-left:1vh;
+  margin-right:1vh;
+  margin-top:1vh;
+   text-shadow:
+       0.25vh 0.25vh 0.25vh #000,
+       3px 3px 0 #000,
+     -1px -1px 0 #000,  
+      1px -1px 0 #000,
+      -1px 1px 0 #000,
+       1px 1px 0 #000;
+   color: white;
+  opacity: 1;
+  position:relative;
+  line-height: 1.2;
+  z-index:5;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+h3 {
+  letter-spacing:0.01em;
+  font-size:5vh;
+  margin:0px;
+  margin-left:2vh;
+  color: white;
+  position:relative;
+  line-height: 1.2;
+  float:left;
+  /*display:inline-block;*/
+  z-index:4;
+  opacity: 0.85;
+  text-shadow: 0.25vh 0.25vh 0.5vh rgba(0,0,0,1);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+h4 {
+  background-image: url("images/twitch.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  letter-spacing:0.01em;
+  font-size:4vh;
+  margin:0px;
+  margin-bottom:2vh;
+  margin-right:2vh;
+  padding-left:5vh;
+  margin-top:1vh;
+  font-weight:500;
+  color: white;
+  z-index: 3;
+  position:relative;
+  float:right;
+  /*display:inline-block;*/
+  opacity: 0.85;
+  text-shadow: 0.25vh 0.25vh 0.5vh rgba(0,0,0,0.9);
+  -webkit-filter: drop-shadow(0.25vh 0.25vh 0.25vh rgba(0,0,0,0.9));
+  filter: drop-shadow(0.25vh 0.25vh 0.25vh rgba(0,0,0,0.9));
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.songrow{
+  position:relative;
+  width:78vh;
+  height:18vh;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  border-radius: 4vh;
+  margin-bottom:1vh;
+}
+
+.songrow-bg {
+    filter: blur(0.4vh) brightness(.75);
+    -webkit-filter: blur(0.4vh) brightness(.75);
+    position: absolute;
+    left: -3px;
+    top: -50%;
+    width: 101%;
+    height: auto;
+    /* opacity: 0.75; */
+    z-index: 1;
+}
+
+.admindiv{
+  width:100%;
+  margin-bottom:1vh;
+}
+
+.adminbuttons{
+  font-size:3vh;
+  font-weight:300;
+  display:inline-block;
+  cursor:pointer;
+  text-align: center;
+  padding: 1vh;
+  color:white;
+  border-radius: 1vh;
+}
+
+.adminbuttons:active {
+	position:relative;
+	top:1px;
+}
+
+.completed{
+	animation:fadeoff 1s forwards;
+}
+
+.check{
+	position:absolute;
+	top:-5px;
+	left:5px;
+	z-index:6;
+	height:100%;
+	width:20vh;
+	opacity:0.85;
+	margin-left:3vh;
+	filter:none;
+	-webkit-filter:none;
+}
+
+.type{
+	position:absolute;
+	right:6vh;
+	top:1vh;
+	z-index:2;
+	height:70%;
+	width:auto;
+	opacity:0.70;
+  float:right;
+  -webkit-filter: drop-shadow(0.25vh 0.25vh 0.25vh rgba(0,0,0,0.9));
+  filter: drop-shadow(0.25vh 0.25vh 0.25vh rgba(0,0,0,0.9));
+}
+
+.dance{
+  position:absolute;
+  top:1.7vh;
+  transform:rotate(45deg);
+	z-index:6;
+  height:auto;
+  -webkit-filter: drop-shadow(0.25vh 0.25vh 0.25vh rgba(0,0,0,0.9));
+  filter: drop-shadow(0.25vh 0.25vh 0.25vh rgba(0,0,0,0.9));
+	opacity:0.85;
+}
+
+.single{
+  right:1.7vh;
+  width:4vh;
+}
+
+.double{
+  right:0vh;
+  width:8vh;
+}
+
+.difficulty {
+  position:absolute;
+  top: 0;
+  right: 0;
+  z-index:6;
+  border-top: 12vh solid rgb(25, 25, 25);
+  border-left: 12vh solid transparent;
+  -webkit-filter: drop-shadow(0.25vh 0.25vh 0.25vh rgba(0,0,0,0.9));
+  filter: drop-shadow(0.25vh 0.25vh 0.25vh rgba(0,0,0,0.9));
+  opacity:0.60;
+}
+
+.beginner {
+  border-top: 12vh solid rgb(0, 255, 255);
+}
+
+.easy {
+  border-top: 12vh solid rgb(251, 169, 0);
+}
+
+.medium {
+  border-top: 12vh solid rgb(250, 0, 160);
+}
+
+.hard {
+  border-top: 12vh solid rgb(102, 250, 0);
+}
+
+.challenge {
+  border-top: 12vh solid rgb(112, 104, 250);
+}
+
+.edit {
+  border-top: 12vh solid rgb(55, 55, 55);
+}
+
+@keyframes wiggle{
+
+  0%{
+    left:-3vh;
+  }
+  25%{
+    left:3vh;
+  }
+  50%{
+    left:-1.5vh;
+    opacity:1;
+  }
+  75%{
+    left:1.5vh;
+  }
+  90%{
+    left:0.5vh;
+  }
+  100%{
+    left:0vh;
+    opacity:1;
+  }
+}
+
+@keyframes fadeoff{
+  0%{opacity:1;}
+  100%{opacity:0.45;}
+}

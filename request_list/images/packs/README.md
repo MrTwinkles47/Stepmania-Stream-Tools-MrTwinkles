@@ -1,1 +1,5 @@
-This is where you put the banners for the packs you have installed. These images are used for the backgrounds of the request tiles. They should be named [pack name].png
+## Pack banner images
+
+Location where banner images are uploaded via the banner uploader script
+
+`unknown.png` is the fallback banner image for packs with no banner

@@ -155,7 +155,7 @@
  
 <?php
 
-include('config.php');
+require_once ('config.php');
 
 if(strtolower($_GET["data"])=="endscreenscroll"){ 
    echo "<body>";
@@ -213,8 +213,6 @@ function format_pack($pack){
 	$pack = str_ireplace("DancingStage","DS",$pack);
 	$pack = str_ireplace("In The Groove","ITG",$pack);
 	$pack = str_ireplace("InTheGroove","ITG",$pack);
-	//$pack = str_ireplace("Ben Speirs","BS",$pack);
-	//$pack = str_ireplace("JBEAN Exclusives","JBEAN...",$pack);
 	$pack = preg_replace("/(\(.*\).\(.*\))$/","",$pack,1);
 return $pack;
 }    
@@ -430,7 +428,7 @@ switch(strtolower($_GET["data"])){
 
 		$sql = "SELECT requestor,COUNT(id) AS count 
 		FROM sm_requests 
-		WHERE state <> 'canceled' AND state <> 'skipped' AND LOWER(requestor) NOT IN(\"{$broadcaster}\") AND request_time > DATE_SUB('$timestamp', INTERVAL $StreamSessionLength HOUR) 
+		WHERE state <> 'canceled' AND state <> 'skipped' AND LOWER(requestor) NOT IN(\"$broadcaster\") AND request_time > DATE_SUB('$timestamp', INTERVAL $StreamSessionLength HOUR) 
 		GROUP BY requestor 
 		ORDER BY count DESC,requestor DESC 
 		LIMIT 5";
@@ -484,7 +482,7 @@ switch(strtolower($_GET["data"])){
 			if(empty($_GET["broadcaster"]) || strlen($_GET["broadcaster"]) < 3){die("Invalid broadcaster set!");}
 			$broadcaster = mysqli_real_escape_string($conn,$_GET["broadcaster"]);
 
-			$sql = "SELECT request_toggle FROM sm_broadcaster WHERE broadcaster = \"{$broadcaster}\"";
+			$sql = "SELECT request_toggle FROM sm_broadcaster WHERE broadcaster = \"$broadcaster\"";
         	$retval = mysqli_query( $conn, $sql );
 
 			if(mysqli_num_rows($retval) == 0){die("Broadcaster not found!");}
@@ -507,6 +505,6 @@ switch(strtolower($_GET["data"])){
 
 echo "</body>\n</html>";
 //close everything out
-die();
 mysqli_close($conn);
+die();
 ?>

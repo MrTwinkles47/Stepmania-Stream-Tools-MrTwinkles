@@ -1,4 +1,4 @@
---SQL changes for upgrades from 1.70 to 1.71:
+-- SQL changes for upgrades from 1.70 to 1.71:
 
 -- add new columns for future functionallity
 ALTER TABLE sm_songsplayed 
@@ -25,9 +25,9 @@ ADD INDEX `song_id` (`song_id`) USING BTREE;
 -- force a rebuild of the song cache
 UPDATE `sm_songs` SET `checksum` = NULL;
 
---Due to fixes for proper UTF-8 connection to the db,
---we will need to do some utf-8 convertions of every table, column that would contain malformed utf8 strings
---UPDATE [tabe] SET [column] = CONVERT(cast(CONVERT([column] USING latin1) AS BINARY) USING utf8mb4);
+-- Due to fixes for proper UTF-8 connection to the db,
+-- we will need to do some utf-8 convertions of every table, column that would contain malformed utf8 strings
+-- UPDATE [tabe] SET [column] = CONVERT(cast(CONVERT([column] USING latin1) AS BINARY) USING utf8mb4);
 UPDATE `sm_broadcaster` SET `broadcaster` = CONVERT(cast(CONVERT(`broadcaster` USING latin1) AS BINARY) USING utf8mb4);
 UPDATE `sm_notedata` SET `song_dir` = CONVERT(cast(CONVERT(`song_dir` USING latin1) AS BINARY) USING utf8mb4);
 UPDATE `sm_notedata` SET `chart_name` = CONVERT(cast(CONVERT(`chart_name` USING latin1) AS BINARY) USING utf8mb4);
