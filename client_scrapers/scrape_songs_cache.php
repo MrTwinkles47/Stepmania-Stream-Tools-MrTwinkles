@@ -317,9 +317,7 @@ function prepare_for_scraping(){
 	echo "Preparing database for song scraping..." . PHP_EOL;
 	wh_log("Preparing database for song scraping...");
 
-	$songsStart = curlPost("songsStart",array(0));
-
-	return (bool) $songsStart;
+	return curlPost("songsStart",array(0));
 }
 
 function get_progress($timeChunkStart, $currentChunk, $totalChunks, array $chunkTimes){
@@ -382,8 +380,6 @@ check_target_url();
 $i = 0;
 $chunk = 573; //69 and 420 were too small
 
-$firstRun = prepare_for_scraping();
-
 // find cache files
 $files = find_cache_files($cacheDir);
 
@@ -395,7 +391,7 @@ $totalChunks = ceil($totalFiles / $chunk);
 $currentChunk = 1;
 $chunkTimes = array(); //array of elapsed times for each chunk
 
-if ($firstRun != TRUE){
+if (prepare_for_scraping() != "TRUE"){
 	//only sort files if NOT first run
 	$files = prepareCacheFiles($files);
 }
@@ -465,8 +461,16 @@ if($i > 0){
 }
 
 //display time
-echo (PHP_EOL . "Total time: ". round((microtime(true) - $microStart)/60,1) . " mins." . PHP_EOL);
-wh_log("Total time: ". round((microtime(true) - $microStart)/60,1) . " mins.");
+$timeEnd = round((microtime(true) - $microStart)/60,1);
+if($timeEnd <= 1){
+	$unitTime = "secs.";
+}elseif($timeEnd > 1){
+	$unitTime = "mins.";
+}
+echo (PHP_EOL . "Total time: $timeEnd $unitTime" . PHP_EOL);
+wh_log("Total time: $timeEnd $unitTime");
 
+//clean up
+unset($ch); // cURL handle close
 exit();
 ?>

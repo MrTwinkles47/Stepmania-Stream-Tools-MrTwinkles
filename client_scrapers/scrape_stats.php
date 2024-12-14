@@ -28,9 +28,10 @@ if(is_readable(__DIR__."/functions.php") && !is_dir(__DIR__."/functions.php")){
 
 //process command arguments
 $whichScript = "StepMania Stats.XML Scraper";
-$frequency = 5;
+$frequency = 5; //seconds
 $fileTime = "";
 $statsXMLfilename = "Stats.xml";
+$chunk = 100;
 
 $versionClient = get_version();
 cli_set_process_title("SMRequests v$versionClient | $whichScript");
@@ -146,6 +147,8 @@ function find_statsxml(string $saveDir, array $profileID, array $USBProfileDir){
 			foreach (glob($saveDir."/".$id."/".$statsXMLfilename,GLOB_BRACE) as $xml_file){
 				//build array of file directory, IDs, modified file times, and set the inital timestamp to "0"
 				$file_arr[$i]['id'] = $id; //id for tracking 
+				$file_arr[$i]['displayName'] = ''; //player filled out after first scrape
+				$file_arr[$i]['playerGuid'] = ''; //player filled out after first scrape
 				$file_arr[$i]['file'] = $xml_file; //file directory
 				$file_arr[$i]['ftime'] = ''; //populated later after the first scrape
 				$file_arr[$i]['mtime'] = filemtime($xml_file); //current modified time of the file
@@ -165,6 +168,8 @@ function find_statsxml(string $saveDir, array $profileID, array $USBProfileDir){
 			foreach (glob($dir."/".$statsXMLfilename,GLOB_BRACE) as $xml_file){
 				//build array of file directory, IDs, modified file times, and set the inital timestamp to "0"
 				$file_arr[$i]['id'] = $dir; //use the dir as the id for tracking
+				$file_arr[$i]['displayName'] = ''; //player filled out after first scrape
+				$file_arr[$i]['playerGuid'] = ''; //player filled out after first scrape
 				$file_arr[$i]['file'] = $xml_file; //file directory
 				$file_arr[$i]['ftime'] = ''; //populated later after the first scrape
 				$file_arr[$i]['mtime'] = filemtime($xml_file); //current modified time of the file
@@ -228,7 +233,6 @@ function statsXMLtoArray (array $file){
 			}
 		}
 	}
-	//unset ($xmlArray,$xmlStr,$errors); //without unsetting thses variables, we get a memory leak over time
 
 	//die if too many errors
 	if(!$xml){wh_log("Too many errors with $statsXMLfilename file."); die ("Too many errors with $statsXMLfilename file." . PHP_EOL);}
@@ -315,9 +319,30 @@ function statsXMLtoArray (array $file){
 		$timestampLastPlayed = max($timestampLastPlayedArr); //overwrite the lastplayed timestamp with the new (latest) value
 	}
 	//build the final array
-	$stats_arr = array('LastPlayed' => $statsLastPlayed, 'HighScores' => $statsHighScores, 'timestampLastPlayed' => $timestampLastPlayed);
+	$stats_arr = array('LastPlayed' => $statsLastPlayed, 'HighScores' => $statsHighScores, 'timestampLastPlayed' => $timestampLastPlayed, 'DisplayName' => $display_name, 'PlayerGuid' => $playerGuid);
 
 	return (array) $stats_arr; 
+}
+
+function upload_statsxml(string $fileId, array $statsElements, string $postSource): void
+	// function to upload each section of the Stats.xml after processing
+{	global $chunk;
+
+	if(($countRecords = count($statsElements)) > 0){
+		$startMicro = microtime(true);
+		$countChunk = 0;
+		$totalChunks = ceil($countRecords / $chunk);
+		wh_log("Uploading $countRecords $postSource records.");
+		foreach (array_chunk($statsElements,$chunk,true) as $statsElementChunk){
+			//post data via cURL
+			if(!curlPost($postSource, $statsElementChunk)){
+				//curlPost returned FALSE
+			}
+			$countChunk++;
+			if($totalChunks > 1){echo("($countChunk/$totalChunks)") . PHP_EOL;}
+		}
+		wh_log ("POST and processing of $countChunk chunk(s) of $postSource of \"" . $fileId . "\" took: " . round(microtime(true) - $startMicro,3) . " secs.");
+	}
 }
 
 // show welcome message
@@ -377,70 +402,42 @@ for (;;){
 			//file has been modified. let's open it!
 			echo PHP_EOL;
 			$startMicro = microtime(true);
-			echo "Starting scrape of profile \"".$file['id']."\"..." . PHP_EOL;
-			wh_log("Starting scrape of profile \"".$file['id']."\"");
+			echo "Starting scrape of profile \"" . $file['id'] . "\"..." . PHP_EOL;
+			wh_log("Starting scrape of profile \"" . $file['id'] . "\"");
 			//parse stats.xml file to an array
 			$statsMicro = microtime(true);
 			$stats_arr = statsXMLtoArray ($file);
-			//save the last played timestamp in the $file array
+			//save the last played timestamp and player info in the $file array
 			$file['timestampLastPlayed'] = $stats_arr['timestampLastPlayed'];
-			wh_log ("$statsXMLfilename parse of \"" . $file['id'] . "\" took: " . round(microtime(true) - $statsMicro,3) . " secs.");
-			$chunk = 1000;
+			$file['displayName'] = $stats_arr['DisplayName'];
+			$file['playerGuid'] = $stats_arr['PlayerGuid'];
+			echo "Found player \"" . $file['displayName'] . "\", GUID: " . $file['playerGuid'] . PHP_EOL;
+			wh_log ("$statsXMLfilename parse of \"" . $file['id'] . "\" took: " . round(microtime(true) - $statsMicro, 3) . " secs.");
+			
 			//LastPlayed
-			if(($countLP = count($stats_arr['LastPlayed'])) > 0){
-				$lpMicro = microtime(true);
-				$countChunk = 0;
-				$totalChunks = ceil($countLP / $chunk);
-				$retries = 0;
-				wh_log("Uploading $countLP lastplayed records.");
-				foreach (array_chunk($stats_arr['LastPlayed'],$chunk,true) as $chunkArr){
-					do{
-						//post data via cURL, retry 3x on failure
-						$curlSuccess = curlPost("lastplayed", $chunkArr);
-						$retries++;
-					}
-					while((!$curlSuccess) && ($retries <= 3));
-					$countChunk++;
-					if($retries >= 3){wh_log ("POST and processing of chunk: $countChunk of LastPlayed of \"" . $file['id'] . "\" timed out after 3 retries.");}
-					if($totalChunks > 1){echo("($countChunk/$totalChunks)") . PHP_EOL;}
-				}
-				wh_log ("POST and processing of $countChunk chunk(s) of LastPlayed of \"" . $file['id'] . "\" took: " . round(microtime(true) - $lpMicro,3) . " secs.");
-			}
+			upload_statsxml($file['id'], $stats_arr['LastPlayed'], "lastplayed");
+
 			//HighScores
-			if(($countHS = count($stats_arr['HighScores'])) > 0){
-				$hsMicro = microtime(true);
-				$countChunk = 0;
-				$totalChunks = ceil($countHS / $chunk);
-				$retries = 0;
-				wh_log("Uploading $countHS highscore records.");
-				foreach (array_chunk($stats_arr['HighScores'],$chunk,true) as $chunkArr){
-					do{
-						//post data via cURL, retry 3x on failure
-						$curlSuccess = curlPost("highscores", $chunkArr);
-						$retries++;
-					}
-					while((!$curlSuccess) && ($retries <= 3));
-					$countChunk++;
-					if($retries >= 3){wh_log ("POST and processing of chunk: $countChunk of HighScores of \"" . $file['id'] . "\" timed out after 3 retries.");}
-					if($totalChunks > 1){echo("($countChunk/$totalChunks)") . PHP_EOL;}
-				}
-				wh_log ("POST and processing of $countChunk chunk(s) of HighScores of \"" . $file['id'] . "\" took: " . round(microtime(true) - $hsMicro,3) . " secs.");
-			}
-			echo "Done " . PHP_EOL;
+			upload_statsxml($file['id'], $stats_arr['HighScores'], "highscores");
+
+			echo "Done. " . PHP_EOL;
 			wh_log ("Done. Scrape of \"" . $file['id'] . "\" took: " . round(microtime(true) - $startMicro,3) . " secs.");
-			unset($stats_arr,$chunkArr);
+			unset($stats_arr);
+			echo PHP_EOL, "Waiting for Stats.XML file(s) to update...", PHP_EOL;
 		}
 		$file['ftime'] = $file['mtime'];
 	}
 
 	clearstatcache(); //file times are cached, this clears it
-	//sleep($frequency); //wait for # seconds
 	for($y=0; $y<=$frequency; $y++){
-		sleep(1);
+		sleep($frequency/$frequency); //wait for # seconds
 		echo "."; //what's a group of dots called?
 	}
 	echo "\33[2K\r"; // clears current line and moves cursor to beginning
 }
+
+//clean up
+unset($ch);
 exit();
 
 ?>

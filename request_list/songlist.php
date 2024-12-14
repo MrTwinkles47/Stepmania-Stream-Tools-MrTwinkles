@@ -62,9 +62,9 @@ $(document).ready(function(){
 
 <body>
 <div class="w3-container w3-theme-dark">
-
-<center><h1><a href="songlist.php"><img src="images/ddr_arrow.png" align="float:left" width="35px" style="margin:5px"></a><strong><?php echo $pageTitle; ?></strong></h1>
-</center>
+<div class="w3-center">
+<h1><a href="songlist.php"><img src="images/ddr_arrow.png" align="float:left" width="35px" style="margin:5px"></a><strong><?php echo $pageTitle; ?></strong></h1>
+</div>
 
 <?php
 
@@ -83,7 +83,6 @@ $conn->set_charset("utf8mb4");
 
 function escape_string($str){
 	global $conn;
-	//$str = htmlspecialchars($str);
 	$str = mysqli_real_escape_string($conn, $str);
 return $str;	
 }
@@ -153,13 +152,13 @@ $result = mysqli_query($conn, $no_of_packs_sql);
 $no_of_packs = mysqli_fetch_array($result)[0];
 
 // output songlist statistics
-echo '<center><h3>' . number_format($no_of_songs,0,0,",") . ' songs in ' . number_format($no_of_packs,0,0,",") . ' packs</h3></center>';
+echo '<div class=w3-center><h3>' . number_format($no_of_songs,0,0,",") . ' songs in ' . number_format($no_of_packs,0,0,",") . ' packs</h3></div>';
 
 //show how to request a song and other commands
-echo '<center><h4>To request a song, type <strong>!request [<i>songname</i>]</strong> into the chat or <strong>!requestid [<i>id</i>]</strong>, if you know the ID# of the song.<br>
+echo '<div class=w3-center><h4>To request a song, type <strong>!request [<i>songname</i>]</strong> into the chat or <strong>!requestid [<i>id</i>]</strong>, if you know the ID# of the song.<br>
 Made an Oops!, use <strong>!cancel</strong> to cancel your last request.<br>
 Feeling lucky, use <strong>!random</strong> for a random song or <strong>!top</strong> for a top 100 song.
-</h4></center>';
+</h4></div>';
 
 //get distinct packs and # of songs from db and set as array
 $packlist = array();
@@ -191,7 +190,7 @@ echo '<input type="SUBMIT" value="Search" class="w3-btn w3-border"/>
 	  <input type="SUBMIT" name="random" value="Random" class="w3-btn w3-border"/>
 	  <a href="songlist.php">Reset</a>';
 echo '</form>';
-echo '</div></center>';
+echo '</center></div>';
 
 //substitute spaces for % to widen the query results
 $query = str_replace(" ","%",$query);
@@ -208,7 +207,7 @@ $total_rows = mysqli_fetch_array($result)[0];
 $total_pages = ceil($total_rows / $no_of_records_per_page);
 
 //build mysql query as a string
-$base_sql = "SELECT sm_songs.id AS id,trim(concat(title,' ',subtitle)) AS title,music_length,added,artist,pack,sec_to_time(music_length) AS LENGTH,IF(sm_songs.display_bpm>0,sm_songs.display_bpm,NULL) AS BPM, 
+$base_sql = "SELECT sm_songs.id AS id,trim(concat(title,' ',subtitle)) AS title,added,artist,pack,sm_songs.credit AS credit,sec_to_time(music_length) AS LENGTH,IF(sm_songs.display_bpm>0,sm_songs.display_bpm,NULL) AS BPM, 
 max(case when sm_notedata.stepstype LIKE 'dance-single' AND sm_notedata.difficulty LIKE 'Beginner' then sm_notedata.credit END) AS credit_BSP, 
 max(case when sm_notedata.stepstype LIKE 'dance-single' AND sm_notedata.difficulty LIKE 'Easy' then sm_notedata.credit END) AS credit_ESP, 
 max(case when sm_notedata.stepstype LIKE 'dance-single' AND sm_notedata.difficulty LIKE 'Medium' then sm_notedata.credit END) AS credit_MSP, 
@@ -271,14 +270,16 @@ MAX(case when sm_notedata.stepstype LIKE 'dance-double' AND sm_notedata.difficul
 MAX(case when sm_notedata.stepstype LIKE 'dance-double' AND sm_notedata.difficulty LIKE 'Edit' then sm_notedata.meter END) AS meter_XDP
 FROM sm_songs
 JOIN sm_notedata ON sm_songs.id=sm_notedata.song_id
-WHERE stepstype NOT LIKE 'lights-cabinet' AND sm_songs.installed = 1 AND (
-				(title LIKE '%$query%' OR subtitle LIKE '%$query%' OR artist LIKE '%$query%') 
+WHERE stepstype LIKE 'dance-%' AND sm_songs.installed = 1 AND (
+				(title LIKE '%$query%' OR subtitle LIKE '%$query%' OR artist LIKE '%$query%' OR sm_songs.credit LIKE '%$query%') 
 				AND (pack LIKE '%$pack')
 				) 
 GROUP BY sm_songs.id 
 ORDER BY $order $sort LIMIT $offset, $no_of_records_per_page";
 
-$result = mysqli_query($conn, $base_sql);
+if(!$result = mysqli_query($conn, $base_sql)){
+	// echo mysqli_error($conn);
+}
 
 //undo query % formatting
 $query = str_replace("%"," ",$query);
@@ -314,14 +315,15 @@ if (strlen($query)<1 && strlen($pack)<1){
 	}
 
 //showing property
-echo '<table class="w3-table-all w3-margin-top" id="myTable">
+echo '<table class="w3-table-all w3-margin-top" id="SongList">
 	<colgroup>
 	<col style="width: 2%">
 	<col style="width: 27%">
 	<col style="width: 27%">
 	<col style="width: 27%">
+	<col style="width: 8%">
 	<col style="width: 5%">
-	<col style="width: 2%">
+	<col style="width: 4%">
 	<col style="width: 1%">
 	<col style="width: 1%">
 	<col style="width: 1%">
@@ -341,12 +343,14 @@ echo '<th class="w3-center"><a href="?query=' . $query . '&pack=' . $pack . '&or
 echo '<th><a href="?query=' . $query . '&pack=' . $pack . '&order=TITLE&sort='; if($sort=='DESC'){echo 'ASC';}else{echo 'DESC';} echo '">TITLE</a></th>';
 echo '<th><a href="?query=' . $query . '&pack=' . $pack . '&order=ARTIST&sort='; if($sort=='DESC'){echo 'ASC';}else{echo 'DESC';} echo '">ARTIST</a></th>';
 echo '<th><a href="?query=' . $query . '&pack=' . $pack . '&order=PACK&sort='; if($sort=='DESC'){echo 'ASC';}else{echo 'DESC';} echo '">PACK</a></th>';
+echo '<th><a href="?query=' . $query . '&pack=' . $pack . '&order=CREDIT&sort='; if($sort=='DESC'){echo 'ASC';}else{echo 'DESC';} echo '">CREDIT</a></th>';
 echo '<th class="w3-center"><a href="?query=' . $query . '&pack=' . $pack . '&order=LENGTH&sort='; if($sort=='DESC'){echo 'ASC';}else{echo 'DESC';} echo '">LENGTH</a></th>';
 echo '<th class="w3-center"><a href="?query=' . $query . '&pack=' . $pack . '&order=BPM&sort='; if($sort=='DESC'){echo 'ASC';}else{echo 'DESC';} echo '">BPM</a></th>';
 echo '<th colspan="6" class="w3-center">SINGLE</th>';
 echo '<th colspan="6" class="w3-center">DOUBLE</th>';
 echo '</tr>';
 echo '<tr>
+	<th></th>
 	<th></th>
 	<th></th>
 	<th></th>
@@ -378,6 +382,7 @@ while ($row = mysqli_fetch_array($result)) {
 	$songs["$s_id"]["title"]=$row["title"];
 	$songs["$s_id"]["artist"]=$row["artist"];
 	$songs["$s_id"]["pack"]=$row["pack"];
+	$songs["$s_id"]["credit"]=$row["credit"];
 	$songs["$s_id"]["bpm"]=$row["BPM"];
 	$songs["$s_id"]["length"]=$row["LENGTH"];
 
@@ -437,6 +442,7 @@ foreach($songs as $song){
 	<td>{$song["title"]}</td>
 	<td>{$song["artist"]}</td>
 	<td>{$song["pack"]}</td>
+	<td>{$song["credit"]}</td>
 	<td>{$song["length"]}</td>
 	<td>{$song["bpm"]}</td>
 	<td style=\"background-color: rgba(0, 255, 255, 0.2);\">{$song["charts"]["BSP"]["meter"]}</td>
@@ -456,7 +462,7 @@ foreach($songs as $song){
 	<tr style=\"display:none;\" id=\"{$song["id"]}\">
 		<td colspan=2>
 		<table class=\"w3-small\" style=\"padding: 0px 0px\">
-		<tr><td colspan=4 class=\"w3-center\"><b>DANCE-SINGLE</b></td></tr>";
+		<tr><td colspan=2 class=\"w3-center\"><b>DANCE-SINGLE</b></td></tr>";
 
 	foreach($song["charts"] as $difficulty=>$chart){
 		if($chart["meter"] != "" && $chart["stepstype"] == "dance-single"){		

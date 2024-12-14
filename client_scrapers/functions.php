@@ -169,11 +169,17 @@ function check_target_url(){
 
 	//reach out to URL to validate a connection
 	$ch = curl_init();
-	curl_setopt($ch, CURLOPT_URL,$targetURL);
-	curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, TRUE);
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
-	curl_setopt($ch, CURLOPT_SSL_OPTIONS, CURLSSLOPT_NATIVE_CA);
+	$chOptions = array(
+		CURLOPT_URL 			=> $targetURL,
+		CURLOPT_RETURNTRANSFER 	=> TRUE,
+		CURLOPT_SSL_OPTIONS 	=> CURLSSLOPT_NATIVE_CA,
+		CURLOPT_IPRESOLVE 		=> CURL_IPRESOLVE_V4,
+		CURLOPT_FOLLOWLOCATION 	=> TRUE,
+		CURLOPT_CONNECTTIMEOUT 	=> 120,
+        CURLOPT_TIMEOUT 		=> 120,
+        CURLOPT_MAXREDIRS 		=> 10
+	);
+	curl_setopt_array($ch, $chOptions);
 	$retries = 0;
 	do{
 		if($retries > 0){
@@ -188,7 +194,11 @@ function check_target_url(){
 	unset($ch);
 
 	if($retcode != 200){
+		wh_log("Maximum retries attempting to reach $targetURL");
 		die("Maximum retries attempting to reach $targetURL" . PHP_EOL);
+	}elseif($retcode == 200){
+		wh_log("Successfully connected to $targetURL!");
+		echo("Successfully connected to $targetURL!" . PHP_EOL);
 	}
 }
 
@@ -204,11 +214,11 @@ function mb_detect_enconding_in_order(string $string, array $encodings): string|
     return false;
 }
 
-function fixEncoding(string $line){
+function fixEncoding(string $line): string
 	//detect and convert ascii, et. al directory string to UTF-8 (Thanks, StepMania!)
 	//96.69% of the time, the encoding error is in a Windows filename
 	//Project OutFox Alpha 4.12 fixed most of the character encoding issues, but this function will remain for legacy support
-
+{
 	//$encoding = mb_detect_encoding($line,'UTF-8,CP1252,ASCII,ISO-8859-1');
 	$encoding = mb_detect_enconding_in_order($line,array('UTF-8','CP1252','ASCII','ISO-8859-1'));
 	$oldLine = $line;
@@ -257,7 +267,7 @@ function parseJsonErrors(string $error, array $jsonArray){
 					}
 				}
 			}
-		}elseif(array_key_exists('LastPlayed',$jsonArray['data']) || array_key_exists('HighScores',$jsonArray['data'])){
+		}elseif($jsonArray['source'] == 'lastplayed' || $jsonArray['source'] = 'highscores'){
 			// rare error from stats file. is there something we can do?
 		}
 	die();
@@ -267,10 +277,14 @@ function parseJsonErrors(string $error, array $jsonArray){
 	}
 }
 
+$ch = NULL; // set CurlHandle to null
+
 function curlPost(string $postSource, array $postData){
 	global $targetURL;
 	global $security_key;
 	global $offlineMode;
+	global $ch;
+
 	$return = FALSE;
 	$jsTime = microtime(TRUE);
 	$versionClient = get_version();
@@ -292,17 +306,30 @@ function curlPost(string $postSource, array $postData){
 	unset($postData,$jsonArray); //memory leak
 	//compress post data
 	$post = gzencode($post,6);
-	//build cURL
-	$ch = curl_init();
-	curl_setopt($ch, CURLOPT_URL,$targetURL."/status.php?$postSource");
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json', 'Content-Encoding: gzip', "Key: $security_keyToken"));
-	curl_setopt($ch, CURLOPT_ENCODING,'gzip,deflate');
-	curl_setopt($ch, CURLOPT_SSL_OPTIONS, CURLSSLOPT_NATIVE_CA);
-	curl_setopt($ch, CURLOPT_POST, TRUE); 
+	//build cURL. re-use handle
+	if(is_null($ch)){
+		$ch = curl_init();
+		$chOptions = array(
+			CURLOPT_RETURNTRANSFER 	=> TRUE,
+			CURLOPT_HTTPHEADER 		=> array('Content-Type: application/json', 'Content-Encoding: gzip', "Key: $security_keyToken"),
+			CURLOPT_ENCODING 		=> 'gzip,deflate',
+			CURLOPT_SSL_OPTIONS 	=> CURLSSLOPT_NATIVE_CA,
+			CURLOPT_POST 			=> TRUE,
+			CURLOPT_IPRESOLVE 		=> CURL_IPRESOLVE_V4,
+			CURLOPT_FOLLOWLOCATION 	=> TRUE,
+			CURLOPT_CONNECTTIMEOUT 	=> 120,
+			CURLOPT_TIMEOUT 		=> 120,
+			CURLOPT_MAXREDIRS 		=> 10
+		);
+		if(!curl_setopt_array($ch, $chOptions)){
+			wh_log("Error setting Curl options");
+			die("Error setting Curl options" . PHP_EOL);
+		}
+	}
+	// URL and POST content can change each call of this function
+	curl_setopt($ch, CURLOPT_URL, $targetURL."/status.php?$postSource");
 	curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
-	curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+
 	$result = curl_exec ($ch);
 	if($result === FALSE){
 		echo "Curl error: ".curl_error($ch) . PHP_EOL;
@@ -318,8 +345,8 @@ function curlPost(string $postSource, array $postData){
 		wh_log("The server responded with error: " . curl_getinfo($ch, CURLINFO_HTTP_CODE));
 		echo "The server responded with error: " . curl_getinfo($ch, CURLINFO_HTTP_CODE) . PHP_EOL;
 	}
-	curl_close ($ch);
-	unset($ch);
+	//curl_close ($ch);
+	//unset($ch);
 
 	return (bool)$return;
 }

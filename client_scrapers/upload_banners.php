@@ -184,7 +184,6 @@ function curlPostUpload(string $postSource, string $file, string $pack_name, str
 		echo "The server responded with error: " . curl_getinfo($ch, CURLINFO_HTTP_CODE) . PHP_EOL;
 		$result = FALSE;
 	}
-	curl_close ($ch);
 	unset($ch);
 
 	return $result;

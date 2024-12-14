@@ -168,13 +168,14 @@ function scrapeSongStart(){
 	global $conn;
 
 	$sql_clear = "UPDATE sm_songs SET scraper = 0";
-	$res = mysqli_query($conn, $sql_clear);
+	mysqli_query($conn, $sql_clear);
 
 	//check if this is the first run of the scraper
-	$sql_clear = "SELECT id FROM sm_songs WHERE installed = 1";
-	$res = mysqli_query($conn, $sql_clear);
-	if (mysqli_num_rows($res) == 0){
-		return TRUE;
+	$sql_clear = "SELECT COUNT(id) AS total FROM sm_songs WHERE installed = 1";
+	if(mysqli_fetch_assoc(mysqli_query($conn, $sql_clear))['total'] == 0){
+		return "TRUE";
+	}else{
+		return "FALSE";
 	}
 }
 
@@ -196,6 +197,7 @@ function scrapeSongEnd($cFiles){
 
 		$sql_getstats = "SELECT COUNT(id) AS total FROM sm_songs WHERE installed=0 AND scraper=0";
 		$notInstalledSongs = mysqli_fetch_assoc(mysqli_query($conn,$sql_getstats))['total'];
+		$notInstalledSongs = $notInstalledSongs + $addNotInstalledSongs;
 
 	//mark songs not found during scraping as "not installed"
 		$sql_getstats = "UPDATE sm_songs SET installed=0 WHERE scraper=0";
@@ -211,6 +213,55 @@ function scrapeSongEnd($cFiles){
 
 }
 
+function remove_tech_notations(string $guess): string {
+	$techs = array('BR','BT','BU','DS','DT','FL','FS','GH','JA','JU','KS','MA','MD','RH','SK','SJ','SS','HS','STR','XO','XMOD');
+	$guess = str_replace($techs,"",$guess);
+	$guess = preg_replace('/^[\s\-*\+\s]+$/','',$guess,); //remove leftover - and +
+	$guess = trim($guess);
+
+	return $guess;
+}
+
+function parse_credits(array $metadata, array $notedata): string|false {
+	// function to guess the chart credit
+	$creditGuesses = array();
+	$tags = array('#CREDIT','#DESCRIPTION');
+	//$tags = array('#CREDIT','#CHARTNAME','#DESCRIPTION','#CHARTSTYLE');
+
+	//build array of credit tags to check
+	if(isset($metadata['#CREDIT'])){
+		$creditGuesses[] = $metadata['#CREDIT'];
+	}
+
+	// loop through notedata tags where credits hang out
+	foreach($notedata as $line => $value){
+		foreach($tags as $tag){
+			if($line == $tag && !empty($value)){
+				$creditGuesses[] = $value;
+			}
+		}
+	}
+
+	//remove tech notations
+	$creditGuesses = array_map('remove_tech_notations',$creditGuesses);
+	//remove empties
+	$creditGuesses = array_filter($creditGuesses);
+
+	//count all elements in array, set the "guesses" as keys and the count as value
+	// [Highflyer] => 4
+	//sort keys, desc
+	$creditGuesses = array_count_values($creditGuesses);
+	arsort($creditGuesses);
+
+	if(current($creditGuesses) > 1){
+		//first element has a count > 1
+		$guess = trim(key($creditGuesses));
+		return $guess;
+	}else{
+		return FALSE;
+	}
+}
+
 function scrapeSong(array $songCacheFiles){
 	//This function processes the song cache arrays and inserts/updates song records into the sm_songs table
 	global $conn;
@@ -218,7 +269,7 @@ function scrapeSong(array $songCacheFiles){
 	foreach ($songCacheFiles as $songCacheFile){
 	
 		$metadata = $notedata_array = array();
-		$song_dir = $title = $subtitle = $artist = $pack = $display_bpm = $song_credit = $stored_hash = $file_hash = $sql_notedata_values = $scraper = "";
+		$song_dir = $title = $titleTranslit = $subtitle = $subtitleTranslit = $artist = $artistTranslit = $pack = $display_bpm = $song_credit = $stored_hash = $file_hash = $sql_notedata_values = $scraper = "";
 		$music_length = $bga = 0;
 		$installed = 1;
 
@@ -378,15 +429,20 @@ function scrapeSong(array $songCacheFiles){
 			}
 
 		//Get song credit
-			
+		
 		if( isset($metadata['#CREDIT']) && !empty($metadata['#CREDIT'])){
 			//song has a credit
 			$song_credit = $metadata['#CREDIT'];
 			$song_credit = mysqli_real_escape_string($conn,$song_credit);
+		}else{
+			if(!$song_credit = parse_credits($metadata, $notedata_array)){
+				$song_credit = "";
+			};
+			$song_credit = mysqli_real_escape_string($conn,$song_credit);
 		}
 			
 		//check if this song exists in the db
-		$sql = "SELECT id,checksum FROM sm_songs WHERE song_dir=\"$song_dir/\"";
+		$sql = "SELECT id, checksum FROM sm_songs WHERE song_dir=\"$song_dir/\"";
 		$retval = mysqli_query( $conn, $sql );
 		
 		if(mysqli_num_rows($retval) == 0){
